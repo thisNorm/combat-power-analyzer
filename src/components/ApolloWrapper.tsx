@@ -1,6 +1,6 @@
 'use client';
 
-import { ApolloProvider } from '@apollo/client';
+import { ApolloProvider } from '@apollo/client/react';
 import { client } from '../lib/apollo-client';
 
 // Next.js App Router 환경에서 Apollo Provider를 안전하게 감싸기 위한 클라이언트 컴포넌트입니다.

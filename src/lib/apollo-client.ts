@@ -1,6 +1,9 @@
-import { ApolloClient, InMemoryCache } from '@apollo/client';
+import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
 
+// 'uri' 단축 속성 대신 HttpLink 객체를 명시적으로 생성하여 주입합니다. (타입 에러 완벽 해결)
 export const client = new ApolloClient({
-    uri: '/api/graphql', // 우리가 Commit 4에서 열어둔 백엔드 단일 통로
-    cache: new InMemoryCache(),
+  link: new HttpLink({
+    uri: '/api/graphql', // 백엔드 게이트웨이 주소
+  }),
+  cache: new InMemoryCache(),
 });

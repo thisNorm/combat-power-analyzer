@@ -9,9 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@apollo/client": "^4.2.7",
     "@apollo/server": "^5.5.1",
     "@as-integrations/next": "^4.1.0",
     "graphql": "^16.14.2",
+    "graphql-tag": "^2.12.7",
     "ioredis": "^5.11.1",
     "next": "16.2.11",
     "react": "19.2.4",
