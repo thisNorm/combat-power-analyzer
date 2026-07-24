@@ -12,10 +12,18 @@ const GET_COMBAT_POWER = gql`
   query GetCombatPower($githubId: String!, $forceRefresh: Boolean) {
     getCombatPower(githubId: $githubId, forceRefresh: $forceRefresh) {
       githubId
-      level
       commitCount
-      repoCount
       mainLanguages
+      jobClass
+      hp
+      attack
+      defense
+      evasion
+      items {
+        slot
+        name
+        rarity
+      }
       aiFactBomb
     }
   }
@@ -24,10 +32,14 @@ const GET_COMBAT_POWER = gql`
 interface CombatPowerData {
   getCombatPower: {
     githubId: string;
-    level: string;
     commitCount: number;
-    repoCount: number;
     mainLanguages: string[];
+    jobClass: string;
+    hp: number;
+    attack: number;
+    defense: number;
+    evasion: number;
+    items: { slot: string; name: string; rarity: string }[];
     aiFactBomb: string;
   };
 }
