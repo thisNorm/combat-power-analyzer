@@ -51,6 +51,7 @@
   color: var(--text-primary);
   padding: var(--space-3) var(--space-4);
   font-weight: 700;
+  white-space: nowrap;
   transition: transform var(--motion-micro), border-color var(--motion-micro), background-color var(--motion-micro);
 }
 

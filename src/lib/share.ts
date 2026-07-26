@@ -58,10 +58,23 @@ async function waitForImages(element: HTMLElement): Promise<void> {
   }));
 }
 
+async function waitForAncestorAnimations(element: HTMLElement): Promise<void> {
+  const animations: Animation[] = [];
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    if (typeof ancestor.getAnimations === 'function') {
+      animations.push(...ancestor.getAnimations());
+    }
+    ancestor = ancestor.parentElement;
+  }
+  await Promise.all(animations.map((animation) => animation.finished.catch(() => undefined)));
+}
+
 export async function waitForCaptureReadiness(element: HTMLElement): Promise<void> {
   if (typeof document !== 'undefined' && document.fonts) {
     await document.fonts.ready;
   }
+  await waitForAncestorAnimations(element);
   await waitForImages(element);
 }
 
@@ -74,21 +87,46 @@ function toPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
+function suspendAncestorTransforms(element: HTMLElement): () => void {
+  if (typeof getComputedStyle === 'undefined') return () => {};
+
+  const transformedAncestors: Array<{ element: HTMLElement; inlineTransform: string }> = [];
+  let ancestor = element.parentElement;
+  while (ancestor) {
+    if (getComputedStyle(ancestor).transform !== 'none') {
+      transformedAncestors.push({ element: ancestor, inlineTransform: ancestor.style.transform });
+      ancestor.style.transform = 'none';
+    }
+    ancestor = ancestor.parentElement;
+  }
+
+  return () => {
+    transformedAncestors.forEach(({ element: transformedElement, inlineTransform }) => {
+      transformedElement.style.transform = inlineTransform;
+    });
+  };
+}
+
 export function captureStoryCard(element: HTMLElement, filename: string): Promise<File> {
   const currentCapture = activeCaptures.get(element);
   if (currentCapture) return currentCapture;
 
   const capture = (async () => {
     await waitForCaptureReadiness(element);
-    const canvas = await html2canvas(element, {
-      backgroundColor: null,
-      width: STORY_WIDTH,
-      height: STORY_HEIGHT,
-      scale: 1,
-      useCORS: true,
-    });
-    const blob = await toPngBlob(canvas);
-    return new File([blob], filename, { type: 'image/png' });
+    const restoreTransforms = suspendAncestorTransforms(element);
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: null,
+        width: STORY_WIDTH,
+        height: STORY_HEIGHT,
+        scale: 1,
+        useCORS: true,
+      });
+      const blob = await toPngBlob(canvas);
+      return new File([blob], filename, { type: 'image/png' });
+    } finally {
+      restoreTransforms();
+    }
   })();
 
   activeCaptures.set(element, capture);

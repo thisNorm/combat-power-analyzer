@@ -10,6 +10,7 @@ import {
   captureStoryCard,
   copyShareUrl,
   createPublicShareUrl,
+  shareWithSystem,
 } from './share';
 
 describe('story sharing helpers', () => {
@@ -45,6 +46,55 @@ describe('story sharing helpers', () => {
     expect(file).toMatchObject({ name: 'code-hunter-octocat-code-hunter.png', type: 'image/png' });
   });
 
+  it('Given a card inside a scaled preview, When capturing it, Then ancestor transforms are suspended and restored', async () => {
+    const scaledParent = {
+      parentElement: null,
+      style: { transform: '' },
+    } as unknown as HTMLElement;
+    const card = {
+      parentElement: scaledParent,
+      querySelectorAll: () => [],
+    } as unknown as HTMLElement;
+    vi.stubGlobal('getComputedStyle', vi.fn((element: HTMLElement) => ({
+      transform: element === scaledParent ? 'matrix(0.267, 0, 0, 0.267, 0, 0)' : 'none',
+    })));
+    html2canvas.mockImplementation(async () => {
+      expect(scaledParent.style.transform).toBe('none');
+      return { toBlob: (callback: BlobCallback) => callback(new Blob(['story'], { type: 'image/png' })) };
+    });
+
+    await captureStoryCard(card, 'story.png');
+
+    expect(scaledParent.style.transform).toBe('');
+  });
+
+  it('Given a card inside an entering modal, When capturing immediately, Then it waits for ancestor animation settlement', async () => {
+    let settleAnimation: (() => void) | undefined;
+    const finished = new Promise<void>((resolve) => { settleAnimation = resolve; });
+    const getAnimations = vi.fn(() => [{ finished }]);
+    const animatedParent = {
+      getAnimations,
+      parentElement: null,
+      style: { transform: '' },
+    } as unknown as HTMLElement;
+    const card = {
+      parentElement: animatedParent,
+      querySelectorAll: () => [],
+    } as unknown as HTMLElement;
+    vi.stubGlobal('getComputedStyle', vi.fn(() => ({ transform: 'none' })));
+    html2canvas.mockResolvedValue({
+      toBlob: (callback: BlobCallback) => callback(new Blob(['story'], { type: 'image/png' })),
+    });
+
+    const capture = captureStoryCard(card, 'story.png');
+    await vi.waitFor(() => expect(getAnimations).toHaveBeenCalledOnce());
+    expect(html2canvas).not.toHaveBeenCalled();
+    settleAnimation?.();
+    await capture;
+
+    expect(html2canvas).toHaveBeenCalledOnce();
+  });
+
   it('Given a browser that can share the exact file payload, When checking capability, Then file sharing is supported', () => {
     const file = new File(['story'], 'story.png', { type: 'image/png' });
     const canShare = vi.fn(() => true);
@@ -59,6 +109,58 @@ describe('story sharing helpers', () => {
     vi.stubGlobal('navigator', { share: vi.fn(), canShare: vi.fn(() => false) });
 
     expect(canShareFiles(file)).toBe(false);
+  });
+
+  it('Given file-capable Web Share, When sharing, Then the PNG and public URL are sent together', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const file = new File(['story'], 'story.png', { type: 'image/png' });
+    vi.stubGlobal('navigator', { share, canShare: vi.fn(() => true) });
+
+    await expect(shareWithSystem({
+      file,
+      githubId: 'octocat',
+      jobClass: 'Repository Warden',
+      factBomb: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    })).resolves.toBe('file');
+    expect(share).toHaveBeenCalledWith({
+      title: 'Code Hunter | Repository Warden',
+      text: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+      files: [file],
+    });
+  });
+
+  it('Given Web Share without file support, When sharing, Then it falls back to text and URL', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const file = new File(['story'], 'story.png', { type: 'image/png' });
+    vi.stubGlobal('navigator', { share, canShare: vi.fn(() => false) });
+
+    await expect(shareWithSystem({
+      file,
+      githubId: 'octocat',
+      jobClass: 'Repository Warden',
+      factBomb: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    })).resolves.toBe('text');
+    expect(share).toHaveBeenCalledWith({
+      title: 'Code Hunter | Repository Warden',
+      text: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    });
+  });
+
+  it('Given no Web Share API, When sharing, Then it reports unsupported for caller fallback', async () => {
+    const file = new File(['story'], 'story.png', { type: 'image/png' });
+    vi.stubGlobal('navigator', {});
+
+    await expect(shareWithSystem({
+      file,
+      githubId: 'octocat',
+      jobClass: 'Repository Warden',
+      factBomb: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    })).resolves.toBe('unsupported');
   });
 
   it('Given a clipboard that accepts a public URL, When copying, Then the URL is written', async () => {

@@ -79,14 +79,14 @@
 .characterStage {
   display: grid;
   justify-items: center;
-  align-content: center;
-  padding: 32px 88px;
+  align-content: start;
+  padding: 16px 88px;
 }
 
 .avatar {
   display: grid;
-  width: 344px;
-  height: 344px;
+  width: 320px;
+  height: 320px;
   place-items: center;
   border: 8px solid var(--accent-gold);
   outline: 8px solid var(--border-strong);
@@ -94,20 +94,20 @@
   box-shadow: inset 0 0 0 24px var(--surface-panel), 0 0 40px var(--accent-violet-deep);
   color: var(--accent-gold);
   font-family: var(--font-display);
-  font-size: 120px;
+  font-size: 112px;
   font-weight: 800;
   line-height: 1;
 }
 
 .characterName {
-  margin: 32px 0 0;
+  margin: 20px 0 0;
   font-size: 48px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
 
 .grade {
-  margin: 12px 0 0;
+  margin: 6px 0 0;
   color: var(--accent-orange);
   font-family: var(--font-display);
   font-size: 28px;
