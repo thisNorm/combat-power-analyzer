@@ -1,130 +1,255 @@
 'use client';
-import { useRef } from 'react';
-import html2canvas from 'html2canvas'; // 캡처 라이브러리 추가
 
-interface Item { slot: string; name: string; rarity: string; }
-interface Stats {
-  githubId: string; commitCount: number; mainLanguages: string[];
-  jobClass: string; hp: number; attack: number; defense: number;
-  evasion: number; items: Item[]; aiFactBomb: string;
+import Image from 'next/image';
+import { useMemo, useState } from 'react';
+
+import type { AnalysisResult } from '../types/analysis';
+import EquipmentEvidenceDialog, { type EvidenceItem } from './EquipmentEvidenceDialog';
+import styles from './ResultDashboard.module.css';
+
+type Evidence = {
+  readonly sourceKey: string;
+  readonly sourceUrl: string;
+  readonly status: string;
+  readonly detail: string;
+};
+
+type Metric = {
+  readonly key: string;
+  readonly value: number | null;
+  readonly evidence: Evidence;
+};
+
+type Equipment = EvidenceItem & {
+  readonly slot: string;
+  readonly rarity: string;
+};
+
+type DashboardStats = Pick<AnalysisResult,
+  'githubId' | 'commitCount' | 'level' | 'jobClass' | 'hp' | 'attack' | 'defense' | 'evasion' | 'mainLanguages' | 'aiFactBomb'
+> & {
+  readonly collectionState: string;
+  readonly repoCount: Metric;
+  readonly followers: Metric;
+  readonly publicMetrics: readonly Metric[];
+  readonly languageUsage: readonly { language: string; repositoryCount: number; ratio: number; evidence: Evidence }[];
+  readonly estimatedCommitCount: { value: number | null; formula: string; evidence: Evidence };
+  readonly evidence: readonly Evidence[];
+  readonly items: readonly Equipment[];
+  readonly equipment: readonly Equipment[];
+  readonly narrative: { text: string; evidenceStatus: string; evidence: readonly Evidence[] };
+};
+
+interface ResultDashboardProps {
+  readonly stats: DashboardStats;
+  readonly onRetry: () => void;
+  readonly onShare?: () => void;
 }
 
-export default function ResultDashboard({ stats, onRetry }: { stats: Stats, onRetry: () => void }) {
-  // 1. 캡처할 영역을 지정하기 위한 useRef 훅 추가
-  const captureRef = useRef<HTMLDivElement>(null);
+const SLOT_LABELS: Record<string, string> = {
+  weapon: '무기',
+  helm: '투구',
+  armor: '갑옷',
+  gloves: '장갑',
+  boots: '장화',
+  relic: '유물',
+};
 
-  const getRarityColor = (rarity: string) => {
-    switch(rarity.toLowerCase()) {
-      case 'legendary': return 'text-orange-400';
-      case 'epic': return 'text-purple-400';
-      case 'rare': return 'text-blue-400';
-      default: return 'text-gray-300';
-    }
-  };
+const SLOT_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'relic'];
 
-  // 2. 바이럴 공유 및 저장 로직
-  const handleShare = async () => {
-    if (!captureRef.current) return;
-    
-    try {
-      // HTML을 Canvas 이미지로 변환
-      const canvas = await html2canvas(captureRef.current, { backgroundColor: '#1a1a1a' });
-      const imageUrl = canvas.toDataURL('image/png');
+function valueOf(value: number | null | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
 
-      // 모바일 웹 공유 API (인스타, 트위터, 카톡 등 네이티브 앱 공유 창 띄우기)
-      if (navigator.share) {
-        const blob = await (await fetch(imageUrl)).blob();
-        const file = new File([blob], 'combat-power.png', { type: 'image/png' });
-        await navigator.share({
-          title: '내 개발 전투력',
-          text: `[${stats.jobClass}] 내 깃허브 스탯과 AI 팩폭을 확인해보세요!`,
-          files: [file],
-        });
-      } else {
-        // PC 화면이거나 공유 API를 지원하지 않으면 짤방처럼 즉시 다운로드 (저장)
-        const link = document.createElement('a');
-        link.href = imageUrl;
-        link.download = `${stats.githubId}_전투력.png`;
-        link.click();
-        alert('이미지가 갤러리에 저장되었습니다! SNS에 직접 공유해보세요.');
-      }
-    } catch (error) {
-      console.error('공유 실패:', error);
-      alert('이미지 캡처에 실패했습니다.');
-    }
-  };
+function compactNumber(value: number): string {
+  return new Intl.NumberFormat('ko-KR').format(value);
+}
+
+function rarityLabel(rarity: string): string {
+  if (rarity.toLowerCase() === 'legendary') return '전설';
+  if (rarity.toLowerCase() === 'epic') return '영웅';
+  if (rarity.toLowerCase() === 'rare') return '희귀';
+  if (rarity.toLowerCase() === 'sealed') return '봉인';
+  return '일반';
+}
+
+function equipmentFor(stats: DashboardStats): Equipment[] {
+  const listed = stats.equipment.length > 0 ? stats.equipment : stats.items;
+  const bySlot = new Map(listed.map((item) => [item.slot, item]));
+  const fallbackEvidence = stats.evidence[0] ?? stats.repoCount.evidence;
+
+  return SLOT_ORDER.map((slot) => bySlot.get(slot) ?? {
+    slot,
+    name: `${SLOT_LABELS[slot]} 봉인`,
+    rarity: 'Sealed',
+    effect: '공개 데이터가 부족하여 효과를 판정하지 않았습니다.',
+    sourceKey: fallbackEvidence.sourceKey,
+    evidenceStatus: 'sealed',
+    evidence: [fallbackEvidence],
+  });
+}
+
+function observedEvidence(stats: DashboardStats): Evidence[] {
+  const evidence = [
+    stats.repoCount.evidence,
+    stats.followers.evidence,
+    ...stats.languageUsage.map((usage) => usage.evidence),
+    ...stats.publicMetrics.map((metric) => metric.evidence),
+    ...stats.narrative.evidence,
+    ...stats.evidence,
+  ];
+  const seen = new Set<string>();
+  return evidence.filter((entry) => {
+    const key = `${entry.sourceKey}:${entry.detail}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 4);
+}
+
+function strengthLine(stats: DashboardStats): string {
+  if (stats.collectionState !== 'complete') {
+    return '현재 공개 지표가 부족해 강점은 아직 봉인했습니다.';
+  }
+
+  const repositories = valueOf(stats.repoCount.value);
+  const followers = valueOf(stats.followers.value);
+  const languageCount = stats.languageUsage.length;
+  if (repositories > 0 && languageCount > 0) {
+    return `공개 저장소 ${compactNumber(repositories)}개와 ${languageCount}개 언어 신호가 확인되어, 꾸준히 흔적을 남기는 탐험가입니다.`;
+  }
+  if (followers > 0) return `공개 팔로워 ${compactNumber(followers)}명이 확인되어, 당신의 공개 작업이 이미 닿고 있습니다.`;
+  return '공개 프로필을 기반으로 확인 가능한 지표만 차분히 기록했습니다.';
+}
+
+export default function ResultDashboard({ stats, onRetry, onShare }: ResultDashboardProps) {
+  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const equipment = useMemo(() => equipmentFor(stats), [stats]);
+  const evidenceLines = useMemo(() => observedEvidence(stats), [stats]);
+  const initials = stats.githubId.slice(0, 2).toUpperCase() || 'GH';
+  const combatPower = stats.hp + stats.attack + stats.defense + stats.evasion;
+  const skillAttack = Math.floor(stats.attack * 1.5);
+  const critical = Math.floor(stats.attack * 0.3);
+  const weapon = equipment.find((item) => item.slot === 'weapon');
+  const armor = equipment.find((item) => item.slot === 'armor');
+  const subtitle = stats.narrative.text || stats.aiFactBomb;
+
+  const statRows = [
+    { name: '생명력', value: stats.hp, basis: `레벨 ${stats.level}에서 산출된 HP입니다.` },
+    { name: '일반 공격', value: stats.attack, basis: `레벨 ${stats.level}에서 산출된 공격력입니다.` },
+    { name: '방어력', value: stats.defense, basis: `레벨 ${stats.level}에서 산출된 방어력입니다.` },
+    { name: '스킬 공격', value: skillAttack, basis: `일반 공격 ${compactNumber(stats.attack)} × 1.5를 내림했습니다.` },
+    { name: '회피', value: stats.evasion, basis: `레벨 ${stats.level}에서 산출된 회피입니다.` },
+    { name: '극대화', value: critical, basis: `일반 공격 ${compactNumber(stats.attack)} × 0.3을 내림했습니다.` },
+  ];
 
   return (
-    <div className="flex flex-col items-center justify-center py-10 px-4 min-h-screen font-serif">
-      {/* 3. 캡처할 최상위 div 영역에 ref={captureRef} 달아주기 */}
-      <div ref={captureRef} className="bg-[#1a1a1a] border-[6px] border-[#3a3a3a] outline outline-2 outline-black shadow-2xl p-6 max-w-5xl w-full flex flex-col md:flex-row gap-6 rounded-sm relative">
-        
-        {/* ... (이하 중간 UI 코드는 기존의 RPG UI 부분과 완벽하게 동일합니다!) ... */}
-        {/* 기존에 복붙하셨던 좌측/우측 패널 코드를 그대로 유지합니다. */}
+    <section className={styles.dashboard} aria-labelledby="result-title">
+      <header className={styles.header}>
+        <div className={styles.brand}>CODE HUNTER · PUBLIC EVIDENCE</div>
+        <div className={styles.headerActions}>
+          {onShare ? <button type="button" className={styles.shareButton} onClick={onShare}>공유하기</button> : null}
+          <button type="button" className="pixel-button" onClick={onRetry}>다시 분석</button>
+        </div>
+      </header>
 
-        {/* -------------------- [여기서부터 생략된 기존 코드 유지] -------------------- */}
-        
-        {/* 🛡️ 좌측 패널 */}
-        <div className="flex-1 bg-[#2a2a2a] border-4 border-[#111] p-4 relative flex flex-col justify-between">
-          <div className="absolute top-2 left-2 bg-green-900 border border-black px-2 text-xs text-green-400">PLAYER</div>
-          <div className="flex justify-center my-8">
-            <img src={`https://github.com/${stats.githubId}.png`} alt="캐릭터" className="w-48 h-48 border-4 border-gray-700 bg-black object-cover" style={{ imageRendering: 'pixelated' }} />
+      <div className={styles.identity}>
+        <p className={styles.level}>LV. {stats.level}</p>
+        <h1 id="result-title" className={styles.githubId}>@{stats.githubId}</h1>
+        <p className={styles.jobClass}>{stats.jobClass}</p>
+        <p className={styles.subtitle}>{subtitle}</p>
+        <p className={styles.rarityMessage}><strong>{rarityLabel(weapon?.rarity ?? 'Sealed')} 장비 감정</strong> · 비교 표본이 없어 전체 개발자 비율은 산정하지 않음</p>
+      </div>
+
+      <div className={styles.overview}>
+        <section className={`${styles.stage} pixel-panel`} aria-labelledby="character-stage-title">
+          <h2 id="character-stage-title" className="screen-reader-text">캐릭터 무대</h2>
+          <div className={styles.stageGlow} aria-hidden="true" />
+          {weapon ? <span className={`${styles.stageBadge} ${styles.weaponBadge}`}>{SLOT_LABELS.weapon}<b>{rarityLabel(weapon.rarity)}</b></span> : null}
+          <div className={styles.avatarFrame}>
+            {avatarFailed ? (
+              <span className={styles.initials} aria-label={`${stats.githubId}의 이니셜`}>{initials}</span>
+            ) : (
+              <Image
+                className={styles.avatar}
+                src={`https://github.com/${encodeURIComponent(stats.githubId)}.png?size=256`}
+                alt={`${stats.githubId} GitHub 아바타`}
+                width={160}
+                height={160}
+                unoptimized
+                onError={() => setAvatarFailed(true)}
+              />
+            )}
           </div>
-          <div className="grid grid-cols-3 gap-2 mt-auto">
-            {stats.items.map((item, idx) => (
-              <div key={idx} className="bg-[#111] border-2 border-gray-600 p-2 text-center h-24 flex flex-col justify-center">
-                <span className="text-gray-500 text-[10px] uppercase block mb-1">{item.slot}</span>
-                <span className={`font-bold text-sm leading-tight ${getRarityColor(item.rarity)}`}>{item.name}</span>
+          {armor ? <span className={`${styles.stageBadge} ${styles.armorBadge}`}>{SLOT_LABELS.armor}<b>{rarityLabel(armor.rarity)}</b></span> : null}
+          <p className={styles.stageCaption}>공개 GitHub 신호로 장비를 감정한 주인공</p>
+        </section>
+
+        <section className={`${styles.power} pixel-panel`} aria-labelledby="power-title">
+          <p className="pixel-kicker">DETERMINISTIC SCORE</p>
+          <h2 id="power-title">전투력 <strong>{compactNumber(combatPower)}</strong></h2>
+          <p>HP + 공격 + 방어 + 회피의 합계입니다. 관측되지 않은 지표는 더하지 않았습니다.</p>
+          <dl className={styles.statGrid}>
+            {statRows.map((stat) => (
+              <div className={styles.stat} key={stat.name}>
+                <dt>{stat.name}</dt>
+                <dd>{compactNumber(stat.value)}</dd>
+                <button type="button" className={styles.infoButton} aria-label={`${stat.name} 계산 근거`}>
+                  <span aria-hidden="true">i</span>
+                  <span className={styles.tooltip} role="tooltip">{stat.basis}</span>
+                </button>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* ⚔️ 우측 패널 */}
-        <div className="flex-[1.2] flex flex-col">
-          <div className="bg-[#5a1a1a] border-2 border-black text-center py-2 mb-4">
-            <h2 className="text-2xl font-black uppercase tracking-widest text-[#facc15]">{stats.githubId}</h2>
-          </div>
-          <div className="bg-[#111] border-2 border-[#333] p-4 mb-4 flex-1">
-            <div className="border-b-2 border-gray-700 pb-2 mb-4 text-center">
-              <span className="text-yellow-500 font-bold text-lg block">{stats.jobClass}</span>
-              <div className="text-gray-400 text-sm mt-1">전투력 (Commits)</div>
-              <div className="text-4xl font-black text-white">{stats.commitCount}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-y-3 text-sm font-semibold">
-              <div className="flex justify-between px-2"><span className="text-gray-400">일반공격</span><span className="text-yellow-400">{stats.attack}</span></div>
-              <div className="flex justify-between px-2"><span className="text-gray-400">생명력</span><span className="text-white">{stats.hp}</span></div>
-              <div className="flex justify-between px-2"><span className="text-gray-400">스킬공격</span><span className="text-yellow-400">{Math.floor(stats.attack * 1.5)}</span></div>
-              <div className="flex justify-between px-2"><span className="text-gray-400">방어력</span><span className="text-white">{stats.defense}</span></div>
-              <div className="flex justify-between px-2"><span className="text-gray-400">극대화</span><span className="text-yellow-400">{Math.floor(stats.attack * 0.3)}</span></div>
-              <div className="flex justify-between px-2"><span className="text-gray-400">회피</span><span className="text-white">{stats.evasion}</span></div>
-            </div>
-          </div>
-          <div className="bg-[#0a0f1a] border-2 border-blue-900 p-4 relative mb-4 flex-1">
-            <div className="text-blue-400 text-xs mb-2 font-bold">[시스템 메시지]</div>
-            <p className="text-blue-100 text-sm leading-relaxed">{stats.aiFactBomb}</p>
-          </div>
-          {/* -------------------- [여기까지 생략된 기존 코드 유지] -------------------- */}
-
-          {/* 4. 버튼 이벤트 연결 (캡처 버튼 추가) */}
-          <div className="flex gap-2">
-            {/* 사진첩 이미지 저장 및 공유 버튼 */}
-            <button 
-              onClick={handleShare}
-              className="flex-1 bg-green-700 hover:bg-green-600 border-2 border-black text-white font-bold py-3 uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
-            >
-              📷 짤 저장 및 공유
-            </button>
-            <button 
-              onClick={onRetry}
-              className="flex-1 bg-[#3a3a3a] hover:bg-[#4a4a4a] border-2 border-black text-white font-bold py-3 uppercase tracking-widest transition-colors"
-            >
-              🔄 재조회
-            </button>
-          </div>
-        </div>
-
+          </dl>
+        </section>
       </div>
-    </div>
+
+      <section className={styles.equipmentSection} aria-labelledby="equipment-title">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className="pixel-kicker">EQUIPMENT ARCHIVE</p>
+            <h2 id="equipment-title">근거 장비 6칸</h2>
+          </div>
+          <p>카드를 열어 출처와 감정 상태를 확인하세요.</p>
+        </div>
+        <div className={styles.equipmentGrid}>
+          {equipment.map((item) => {
+            const sealed = item.evidenceStatus !== 'observed';
+            return (
+              <button
+                type="button"
+                className={`${styles.equipmentCard} ${sealed ? styles.sealed : styles[item.rarity.toLowerCase()] ?? ''}`}
+                key={item.slot}
+                onClick={() => setSelectedEquipment(item)}
+                aria-haspopup="dialog"
+                aria-label={`${SLOT_LABELS[item.slot] ?? item.slot}: ${item.name} 근거 열기`}
+              >
+                <span className={styles.slotLabel}>{SLOT_LABELS[item.slot] ?? item.slot}</span>
+                <span className={styles.itemName}>{sealed ? '봉인 슬롯' : item.name}</span>
+                <span className={styles.itemEffect}>{sealed ? '공개 데이터 부족' : item.effect}</span>
+                <span className={styles.rarity}>{sealed ? '봉인 · 공개 데이터 부족' : rarityLabel(item.rarity)}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={`${styles.factBomb} pixel-panel`} aria-labelledby="fact-bomb-title">
+        <p className="pixel-kicker">EVIDENCE-BOUND FACT BOMB</p>
+        <h2 id="fact-bomb-title">대표 팩폭</h2>
+        <p className={styles.factSentence}>{subtitle}</p>
+        <h3>확인한 공개 근거</h3>
+        <ul className={styles.evidenceList}>
+          {evidenceLines.length > 0 ? evidenceLines.map((entry) => (
+            <li key={`${entry.sourceKey}-${entry.detail}`}><strong>{entry.sourceKey}</strong><span>{entry.detail}</span></li>
+          )) : <li>공개 근거를 받지 못해 확인 가능한 항목이 없습니다.</li>}
+        </ul>
+        <p className={styles.strength}>{strengthLine(stats)}</p>
+        <p className={styles.limitedNotice}>데이터 제한: 비공개 활동, 개인 저장소, 총 커밋 수는 공개 API에서 확인되지 않으면 표시하지 않습니다.</p>
+      </section>
+
+      <EquipmentEvidenceDialog item={selectedEquipment} onClose={() => setSelectedEquipment(null)} />
+    </section>
   );
 }
