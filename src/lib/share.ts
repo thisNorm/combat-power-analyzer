@@ -81,7 +81,7 @@ export function captureStoryCard(element: HTMLElement, filename: string): Promis
   const capture = (async () => {
     await waitForCaptureReadiness(element);
     const canvas = await html2canvas(element, {
-      backgroundColor: '#07090d',
+      backgroundColor: null,
       width: STORY_WIDTH,
       height: STORY_HEIGHT,
       scale: 1,

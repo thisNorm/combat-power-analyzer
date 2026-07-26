@@ -42,7 +42,7 @@ type DashboardStats = Pick<AnalysisResult,
 
 interface ResultDashboardProps {
   readonly stats: DashboardStats;
-  readonly onRetry: () => void;
+  readonly onNewAnalysis: () => void;
   readonly onShare?: () => void;
 }
 
@@ -122,7 +122,7 @@ function strengthLine(stats: DashboardStats): string {
   return '공개 프로필을 기반으로 확인 가능한 지표만 차분히 기록했습니다.';
 }
 
-export default function ResultDashboard({ stats, onRetry, onShare }: ResultDashboardProps) {
+export default function ResultDashboard({ stats, onNewAnalysis, onShare }: ResultDashboardProps) {
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const equipment = useMemo(() => equipmentFor(stats), [stats]);
@@ -150,7 +150,7 @@ export default function ResultDashboard({ stats, onRetry, onShare }: ResultDashb
         <div className={styles.brand}>CODE HUNTER · PUBLIC EVIDENCE</div>
         <div className={styles.headerActions}>
           {onShare ? <button type="button" className={styles.shareButton} onClick={onShare}>공유하기</button> : null}
-          <button type="button" className="pixel-button" onClick={onRetry}>다시 분석</button>
+          <button type="button" className="pixel-button" onClick={onNewAnalysis}>새로 분석하기</button>
         </div>
       </header>
 

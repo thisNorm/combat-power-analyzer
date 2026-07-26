@@ -9,6 +9,7 @@ import styles from './StoryShareCard.module.css';
 export interface StoryShareCardProps {
   readonly result: AnalysisResult;
   readonly ariaHidden?: boolean;
+  readonly shareUrl?: string;
 }
 
 function firstEvidence(result: AnalysisResult): SourceEvidence | undefined {
@@ -25,12 +26,15 @@ function initials(githubId: string): string {
 }
 
 export const StoryShareCard = forwardRef<HTMLDivElement, StoryShareCardProps>(function StoryShareCard(
-  { result, ariaHidden = false },
+  { result, ariaHidden = false, shareUrl },
   ref,
 ) {
   const items = observedItems(result);
   const evidence = firstEvidence(result);
   const rarity = items[0]?.rarity ?? 'Observed';
+  const shortUrl = shareUrl
+    ? `${new URL(shareUrl).host}/?github=${encodeURIComponent(result.githubId)}`
+    : `/?github=${encodeURIComponent(result.githubId)}`;
 
   return (
     <article
@@ -71,7 +75,7 @@ export const StoryShareCard = forwardRef<HTMLDivElement, StoryShareCardProps>(fu
 
       <footer className={styles.footer}>
         <p className={styles.brand}>CODE HUNTER</p>
-        <p className={styles.shortUrl}>code-hunter.kr</p>
+        <p className={styles.shortUrl}>{shortUrl}</p>
         <p className={styles.cta}>내 개발 전투력도 확인하기</p>
       </footer>
       <div className={styles.bottomSafeArea} />

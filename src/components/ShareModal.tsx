@@ -143,8 +143,9 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
       const file = await generateImage();
       const method = await shareWithSystem({ file, githubId: result.githubId, jobClass: result.jobClass, factBomb: result.aiFactBomb, url: publicUrl });
       if (method === 'unsupported') {
+        await copyShareUrl(publicUrl);
         setState('unsupported');
-        setMessage('이 브라우저에서는 앱 공유를 지원하지 않습니다. 링크를 복사하거나 이미지를 저장해 주세요.');
+        setMessage('앱 공유를 지원하지 않아 공개 GitHub 재분석 링크를 복사했습니다.');
         return;
       }
       setState('success');
@@ -200,7 +201,7 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
         <div className={styles.body}>
           <p id={descriptionId} className={styles.description}>스토리용 9:16 카드를 만들고, 링크 또는 이미지로 공유할 수 있습니다.</p>
           <div className={styles.preview} aria-label="스토리 카드 미리보기">
-            <div className={styles.previewScale}><StoryShareCard ref={cardRef} result={result} ariaHidden /></div>
+            <div className={styles.previewScale}><StoryShareCard ref={cardRef} result={result} shareUrl={publicUrl} ariaHidden /></div>
           </div>
 
           <div className={styles.actions} aria-label="공유 동작">

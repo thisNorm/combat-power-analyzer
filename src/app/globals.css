@@ -91,6 +91,22 @@ body::before {
   opacity: 0.16;
 }
 
+.app-main {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+  padding-inline: var(--space-4);
+}
+
+.analysis-error {
+  width: min(calc(100% - var(--space-8)), 42rem);
+  margin: var(--space-6) auto calc(var(--space-6) * -1);
+  border-color: var(--status-error);
+  padding: var(--space-4);
+  color: var(--text-primary);
+  text-align: center;
+  word-break: keep-all;
+}
+
 button,
 input {
   font: inherit;

@@ -36,7 +36,7 @@ describe('story sharing helpers', () => {
     const file = await captureStoryCard(card, 'code-hunter-octocat-code-hunter.png');
 
     expect(html2canvas).toHaveBeenCalledWith(card, {
-      backgroundColor: '#07090d',
+      backgroundColor: null,
       width: 1080,
       height: 1920,
       scale: 1,
