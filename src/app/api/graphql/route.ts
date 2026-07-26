@@ -1,6 +1,6 @@
 import { ApolloServer } from "@apollo/server";
 import { startServerAndCreateNextHandler } from "@as-integrations/next";
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { typeDefs } from "../../../graphql/schema";
 import { resolvers } from "../../../graphql/resolvers";
 
@@ -13,5 +13,10 @@ const server = new ApolloServer({
 // 2. Next.js API Router 규격에 맞게 핸들러 생성
 const handler = startServerAndCreateNextHandler<NextRequest>(server);
 
-// 3. GET과 POST 요청 모두 이 핸들러가 처리하도록 개방
-export { handler as GET, handler as POST };
+export async function GET(request: NextRequest): Promise<Response> {
+  return handler(request);
+}
+
+export async function POST(request: NextRequest): Promise<Response> {
+  return handler(request);
+}

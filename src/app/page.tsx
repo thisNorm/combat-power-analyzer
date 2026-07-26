@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { gql } from '@apollo/client/core';
 import { useLazyQuery } from '@apollo/client/react';
 
@@ -13,7 +13,16 @@ const GET_COMBAT_POWER = gql`
     getCombatPower(githubId: $githubId, forceRefresh: $forceRefresh) {
       githubId
       commitCount
+      fingerprint
+      collectionState
+      repoCount { key value evidence { sourceKey sourceUrl status detail } }
+      followers { key value evidence { sourceKey sourceUrl status detail } }
+      publicMetrics { key value evidence { sourceKey sourceUrl status detail } }
       mainLanguages
+      languageUsage { language repositoryCount ratio evidence { sourceKey sourceUrl status detail } }
+      estimatedCommitCount { value formula evidence { sourceKey sourceUrl status detail } }
+      evidence { sourceKey sourceUrl status detail }
+      level
       jobClass
       hp
       attack
@@ -23,7 +32,11 @@ const GET_COMBAT_POWER = gql`
         slot
         name
         rarity
+        evidenceStatus
+        evidence { sourceKey sourceUrl status detail }
       }
+      equipment { slot name rarity evidenceStatus evidence { sourceKey sourceUrl status detail } }
+      narrative { text evidenceStatus evidence { sourceKey sourceUrl status detail } }
       aiFactBomb
     }
   }
@@ -33,15 +46,54 @@ interface CombatPowerData {
   getCombatPower: {
     githubId: string;
     commitCount: number;
+    fingerprint: string;
+    collectionState: string;
+    repoCount: Metric;
+    followers: Metric;
+    publicMetrics: Metric[];
     mainLanguages: string[];
+    languageUsage: LanguageUsage[];
+    estimatedCommitCount: { value: number | null; formula: string; evidence: Evidence };
+    evidence: Evidence[];
+    level: number;
     jobClass: string;
     hp: number;
     attack: number;
     defense: number;
     evasion: number;
-    items: { slot: string; name: string; rarity: string }[];
+    items: Item[];
+    equipment: Item[];
+    narrative: { text: string; evidenceStatus: string; evidence: Evidence[] };
     aiFactBomb: string;
   };
+}
+
+interface Evidence {
+  sourceKey: string;
+  sourceUrl: string;
+  status: string;
+  detail: string;
+}
+
+interface Metric {
+  key: string;
+  value: number | null;
+  evidence: Evidence;
+}
+
+interface LanguageUsage {
+  language: string;
+  repositoryCount: number;
+  ratio: number;
+  evidence: Evidence;
+}
+
+interface Item {
+  slot: string;
+  name: string;
+  rarity: string;
+  evidenceStatus: string;
+  evidence: Evidence[];
 }
 
 interface CombatPowerVars {
@@ -62,14 +114,18 @@ export default function Home() {
     { fetchPolicy: 'network-only' }
   );
 
-  const handleStart = async (githubId: string) => {
-    if (!githubId.trim()) return;
-    setCurrentId(githubId);
+  const handleStart = useCallback(async (githubId: string, updateShareUrl = true) => {
+    const normalizedGithubId = githubId.trim();
+    if (!normalizedGithubId) return;
+    setCurrentId(normalizedGithubId);
     setStep('LOADING');
+    if (updateShareUrl) {
+      window.history.replaceState(null, '', `/?github=${encodeURIComponent(normalizedGithubId)}`);
+    }
 
     try {
       // Promise 비동기 방식으로 쿼리를 실행하고 결과를 바로 받아옵니다.
-      const { data, error } = await fetchStats({ variables: { githubId, forceRefresh: false } });
+      const { data, error } = await fetchStats({ variables: { githubId: normalizedGithubId, forceRefresh: false } });
       
       if (error) throw error;
       if (data?.getCombatPower) {
@@ -81,7 +137,18 @@ export default function Home() {
       alert('데이터를 분석하는 중 오류가 발생했습니다. (Redis 서버 확인)');
       setStep('IDLE');
     }
-  };
+  }, [fetchStats]);
+
+  useEffect(() => {
+    const githubId = new URLSearchParams(window.location.search).get('github')?.trim();
+    if (githubId) {
+      const animationFrame = window.requestAnimationFrame(() => {
+        void handleStart(githubId, false);
+      });
+      return () => window.cancelAnimationFrame(animationFrame);
+    }
+    return undefined;
+  }, [handleStart]);
 
   const handleRefresh = async () => {
     setStep('LOADING');
