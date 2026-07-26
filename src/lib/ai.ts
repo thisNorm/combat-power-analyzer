@@ -14,8 +14,25 @@ const NARRATIVE_SCHEMA: ResponseSchema = {
   required: ['factBomb'],
 };
 
-function hashIndex(fingerprint: string, length: number): number {
-  return Number.parseInt(fingerprint.slice(0, 8), 16) % length;
+function stableHash(value: string): string {
+  let hash = 2_166_136_261;
+  for (const character of value) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+function personaSeed(stats: GithubStats): string {
+  return JSON.stringify({
+    githubId: stats.githubId.toLowerCase(),
+    collectionState: stats.collectionState,
+    repositoryCount: stats.repoCount.value,
+    languages: stats.languageUsage.map((usage) => usage.language),
+  });
+}
+
+function hashIndex(seed: string, length: number): number {
+  return Number.parseInt(stableHash(seed), 16) % length;
 }
 
 function rarityForLevel(level: number): string {
@@ -31,7 +48,8 @@ function numericValue(value: number | null): number {
 
 function localEquipment(stats: GithubStats, level: number): readonly Equipment[] {
   const rarity = rarityForLevel(level);
-  const namePrefix = `${stats.githubId}-${stats.fingerprint.slice(0, 6)}`;
+  const seed = personaSeed(stats);
+  const namePrefix = `${stats.githubId}-${stableHash(seed).slice(0, 6)}`;
   const primaryLanguage = stats.languageUsage[0];
   const sealedEvidence: SourceEvidence = stats.evidence[0] ?? stats.repoCount.evidence;
   const observedEquipment: Partial<Record<(typeof EQUIPMENT_SLOTS)[number], Equipment>> = {};
@@ -88,8 +106,9 @@ function localNarrative(stats: GithubStats): Narrative {
     'Every displayed trait is traceable to a public source or marked unavailable.',
   ] as const;
   const hasMetrics = stats.collectionState === 'complete';
+  const seed = personaSeed(stats);
   const text = hasMetrics
-    ? `${stats.githubId}: ${templates[hashIndex(stats.fingerprint, templates.length)]}`
+    ? `${stats.githubId}: ${templates[hashIndex(seed, templates.length)]}`
     : `${stats.githubId}: public GitHub evidence is insufficient, so no unsupported claim was generated.`;
   return {
     text,
@@ -131,13 +150,14 @@ export async function generateFactBomb(stats: GithubStats): Promise<AnalysisResu
   const fallbackNarrative = localNarrative(stats);
   const narrative = await translateNarrative(stats, fallbackNarrative);
   const classes = ['Sourcebound Scout', 'Repository Warden', 'Evidence Cartographer'] as const;
+  const seed = personaSeed(stats);
 
   return {
     ...stats,
     commitCount: stats.estimatedCommitCount.value ?? 0,
     mainLanguages: stats.languageUsage.map((usage) => usage.language),
     level,
-    jobClass: classes[hashIndex(stats.fingerprint, classes.length)] ?? classes[0],
+    jobClass: classes[hashIndex(seed, classes.length)] ?? classes[0],
     hp: 100 + level * 50,
     attack: 10 + level * 7,
     defense: 8 + level * 5,

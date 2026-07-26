@@ -14,7 +14,7 @@ vi.mock('@google/generative-ai', async (importOriginal) => {
   };
 });
 
-function stubPublicGithubResponses(): void {
+function stubPublicGithubResponses(followers = 7): void {
   vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
     const url = String(input);
     if (url.includes('/repos?')) {
@@ -29,7 +29,7 @@ function stubPublicGithubResponses(): void {
     }
 
     return new Response(
-      JSON.stringify({ public_repos: 3, followers: 7, following: 5, public_gists: 2 }),
+      JSON.stringify({ public_repos: 3, followers, following: 5, public_gists: 2 }),
       { status: 200 },
     );
   }));
@@ -107,5 +107,25 @@ describe('analysis result contract', () => {
         sourceKey: item.evidence[0]?.sourceKey,
       });
     }
+  });
+
+  it('Given only a volatile follower increment, When the same profile is reanalyzed, Then its RPG identity remains stable', async () => {
+    vi.stubEnv('GEMINI_API_KEY', '');
+    const { generateFactBomb } = await import('./ai');
+    const { fetchGithubStats } = await import('./github');
+
+    stubPublicGithubResponses(8);
+    const firstStats = await fetchGithubStats('octocat');
+    const first = await generateFactBomb(firstStats);
+    stubPublicGithubResponses(9);
+    const secondStats = await fetchGithubStats('octocat');
+    const second = await generateFactBomb(secondStats);
+
+    expect(firstStats.fingerprint).not.toBe(secondStats.fingerprint);
+    expect(second).toMatchObject({
+      jobClass: first.jobClass,
+      aiFactBomb: first.aiFactBomb,
+      equipment: first.equipment.map(({ name }) => ({ name })),
+    });
   });
 });
