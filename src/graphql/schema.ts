@@ -31,6 +31,8 @@ export const typeDefs = gql`
     slot: String!
     name: String!
     rarity: String!
+    effect: String!
+    sourceKey: String!
     evidenceStatus: String!
     evidence: [SourceEvidence!]!
   }

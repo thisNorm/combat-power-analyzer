@@ -91,4 +91,21 @@ describe('analysis result contract', () => {
     });
     expect(result.equipment).toHaveLength(6);
   });
+
+  it('Given collected or sealed equipment, When an analysis result is assembled, Then every item exposes a deterministic effect and representative source key', async () => {
+    vi.stubEnv('GEMINI_API_KEY', '');
+    stubPublicGithubResponses();
+    const { generateFactBomb } = await import('./ai');
+    const { fetchGithubStats } = await import('./github');
+    const stats = await fetchGithubStats('octocat');
+
+    const result = await generateFactBomb(stats);
+
+    for (const item of result.equipment) {
+      expect(item).toMatchObject({
+        effect: expect.stringMatching(/\S/),
+        sourceKey: item.evidence[0]?.sourceKey,
+      });
+    }
+  });
 });

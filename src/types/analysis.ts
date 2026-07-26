@@ -46,6 +46,8 @@ export interface Equipment {
   readonly slot: EquipmentSlot;
   readonly name: string;
   readonly rarity: string;
+  readonly effect: string;
+  readonly sourceKey: string;
   readonly evidenceStatus: EvidenceStatus;
   readonly evidence: readonly SourceEvidence[];
 }

@@ -3,7 +3,7 @@ import type { ResponseSchema } from '@google/generative-ai';
 import { z } from 'zod';
 
 import { EQUIPMENT_SLOTS } from '../types/analysis';
-import type { AnalysisResult, Equipment, GithubStats, Narrative } from '../types/analysis';
+import type { AnalysisResult, Equipment, GithubStats, Narrative, SourceEvidence } from '../types/analysis';
 
 const NarrativeResponseSchema = z.object({ factBomb: z.string().min(1).max(280) });
 const NARRATIVE_SCHEMA: ResponseSchema = {
@@ -33,6 +33,7 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
   const rarity = rarityForLevel(level);
   const namePrefix = `${stats.githubId}-${stats.fingerprint.slice(0, 6)}`;
   const primaryLanguage = stats.languageUsage[0];
+  const sealedEvidence: SourceEvidence = stats.evidence[0] ?? stats.repoCount.evidence;
   const observedEquipment: Partial<Record<(typeof EQUIPMENT_SLOTS)[number], Equipment>> = {};
 
   if (primaryLanguage !== undefined) {
@@ -40,6 +41,8 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
       slot: 'weapon',
       name: `${namePrefix} ${primaryLanguage.language} blade`,
       rarity,
+      effect: `Channels ${primaryLanguage.language} repository evidence.`,
+      sourceKey: primaryLanguage.evidence.sourceKey,
       evidenceStatus: 'observed',
       evidence: [primaryLanguage.evidence],
     };
@@ -49,6 +52,8 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
       slot: 'helm',
       name: `${namePrefix} repository helm`,
       rarity,
+      effect: 'Guards public repository evidence.',
+      sourceKey: stats.repoCount.evidence.sourceKey,
       evidenceStatus: 'observed',
       evidence: [stats.repoCount.evidence],
     };
@@ -58,6 +63,8 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
       slot: 'relic',
       name: `${namePrefix} follower relic`,
       rarity,
+      effect: 'Resonates with public follower evidence.',
+      sourceKey: stats.followers.evidence.sourceKey,
       evidenceStatus: 'observed',
       evidence: [stats.followers.evidence],
     };
@@ -67,8 +74,10 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
     slot,
     name: `${namePrefix} sealed ${slot}`,
     rarity: 'Sealed',
+    effect: 'Sealed pending public evidence.',
+    sourceKey: sealedEvidence.sourceKey,
     evidenceStatus: 'sealed',
-    evidence: [],
+    evidence: [sealedEvidence],
   });
 }
 

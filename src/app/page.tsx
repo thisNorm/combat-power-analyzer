@@ -32,10 +32,12 @@ const GET_COMBAT_POWER = gql`
         slot
         name
         rarity
+        effect
+        sourceKey
         evidenceStatus
         evidence { sourceKey sourceUrl status detail }
       }
-      equipment { slot name rarity evidenceStatus evidence { sourceKey sourceUrl status detail } }
+      equipment { slot name rarity effect sourceKey evidenceStatus evidence { sourceKey sourceUrl status detail } }
       narrative { text evidenceStatus evidence { sourceKey sourceUrl status detail } }
       aiFactBomb
     }
@@ -92,6 +94,8 @@ interface Item {
   slot: string;
   name: string;
   rarity: string;
+  effect: string;
+  sourceKey: string;
   evidenceStatus: string;
   evidence: Evidence[];
 }
