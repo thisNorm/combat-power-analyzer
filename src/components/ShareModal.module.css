@@ -167,7 +167,7 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@media (max-width: 48rem) {
+@media (max-width: 47.99rem) {
   .backdrop {
     align-items: end;
     padding: 0;
