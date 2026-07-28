@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { normalizeGithubId } from './github-id';
 import type { GithubStats, LanguageUsage, PublicMetric, SourceEvidence } from '../types/analysis';
 
 const GitHubUserSchema = z.object({
@@ -81,7 +82,10 @@ async function fetchJson(url: string): Promise<unknown> {
 }
 
 export async function fetchGithubStats(githubId: string): Promise<GithubStats> {
-  const normalizedGithubId = githubId.trim();
+  const normalizedGithubId = normalizeGithubId(githubId);
+  if (normalizedGithubId === null) {
+    return unavailableStats('invalid-user', 'Invalid GitHub username');
+  }
   const userUrl = `${GITHUB_API}/users/${encodeURIComponent(normalizedGithubId)}`;
   const repositoriesUrl = `${userUrl}/repos?per_page=100&sort=updated`;
 

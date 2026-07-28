@@ -8,6 +8,7 @@ import LandingForm from '../components/LandingForm';
 import LoadingScreen from '../components/LoadingScreen';
 import ResultDashboard from '../components/ResultDashboard';
 import { ShareModal } from '../components/ShareModal';
+import { normalizeGithubId } from '../lib/github-id';
 import type { AnalysisResult } from '../types/analysis';
 
 const GET_COMBAT_POWER = gql`
@@ -55,7 +56,7 @@ interface CombatPowerVars {
   forceRefresh?: boolean;
 }
 
-function normalizeGithubId(input: string): string | null {
+function normalizeGithubInput(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
 
@@ -69,7 +70,7 @@ function normalizeGithubId(input: string): string | null {
     }
   }
 
-  return /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(candidate) ? candidate : null;
+  return normalizeGithubId(candidate);
 }
 
 export default function Home() {
@@ -84,7 +85,7 @@ export default function Home() {
   );
 
   const handleStart = useCallback(async (githubId: string, updateShareUrl = true) => {
-    const normalizedGithubId = normalizeGithubId(githubId);
+    const normalizedGithubId = normalizeGithubInput(githubId);
     if (!normalizedGithubId) {
       setErrorMessage('GitHub 사용자명 또는 github.com 프로필 주소를 확인해 주세요.');
       return;

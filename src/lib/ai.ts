@@ -125,7 +125,8 @@ function localNarrative(stats: GithubStats): Narrative {
   };
 }
 
-async function translateNarrative(stats: GithubStats, fallback: Narrative): Promise<Narrative> {
+async function verifyNarrativeWithGemini(fallback: Narrative): Promise<Narrative> {
+  if (fallback.evidenceStatus !== 'observed') return fallback;
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (apiKey === undefined || apiKey.length === 0) return fallback;
 
@@ -139,12 +140,14 @@ async function translateNarrative(stats: GithubStats, fallback: Narrative): Prom
       },
     });
     const response = await model.generateContent([
-      'Translate this evidence-bound local narrative into concise Korean. Do not introduce numbers, facts, equipment, stats, or model names.',
+      'Return the exact evidence-bound Korean narrative below unchanged as the factBomb JSON field. Do not add, remove, translate, or rewrite any character.',
       fallback.text,
     ].join('\n'));
     const raw: unknown = JSON.parse(await response.response.text());
     const parsed = NarrativeResponseSchema.safeParse(raw);
-    return parsed.success ? { ...fallback, text: parsed.data.factBomb } : fallback;
+    return parsed.success && parsed.data.factBomb === fallback.text
+      ? { ...fallback, text: parsed.data.factBomb }
+      : fallback;
   } catch {
     return fallback;
   }
@@ -156,7 +159,7 @@ export async function generateFactBomb(stats: GithubStats): Promise<AnalysisResu
   const level = Math.min(99, 1 + Math.floor(repoCount / 2) + Math.floor(followers / 10) + stats.languageUsage.length);
   const equipment = localEquipment(stats, level);
   const fallbackNarrative = localNarrative(stats);
-  const narrative = await translateNarrative(stats, fallbackNarrative);
+  const narrative = await verifyNarrativeWithGemini(fallbackNarrative);
   const classes = ['Sourcebound Scout', 'Repository Warden', 'Evidence Cartographer'] as const;
   const seed = personaSeed(stats);
 
