@@ -182,6 +182,21 @@ describe('analysis result contract', () => {
     expect(geminiSdk.getGenerativeModel).not.toHaveBeenCalled();
   });
 
+  it('Given adjacent hyphens in a GitHub username, When analysis is requested, Then validation blocks every provider request', async () => {
+    vi.stubEnv('GEMINI_API_KEY', 'configured-test-key');
+    const fetchRequest = vi.fn();
+    vi.stubGlobal('fetch', fetchRequest);
+    const { normalizeGithubId } = await import('./github-id');
+    const { resolvers } = await import('../graphql/resolvers');
+
+    expect(normalizeGithubId('octo--cat')).toBeNull();
+    await expect(resolvers.Query.getCombatPower(null, {
+      githubId: 'octo--cat',
+    })).rejects.toThrow('single hyphen-separated segments');
+    expect(fetchRequest).not.toHaveBeenCalled();
+    expect(geminiSdk.getGenerativeModel).not.toHaveBeenCalled();
+  });
+
   it('Given more than one repository response page, When languages are summarized, Then partial language evidence is sealed instead of treated as complete', async () => {
     stubPublicGithubResponses(7, 101);
     const { fetchGithubStats } = await import('./github');
