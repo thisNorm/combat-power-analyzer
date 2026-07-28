@@ -1,7 +1,7 @@
 .card {
   --story-safe-top: 180px;
   --story-safe-bottom: 280px;
-  --story-character-row: 400px;
+  --story-character-row: 440px;
   --story-footer-row: 160px;
   --story-gutter: 88px;
   --story-panel-padding: 24px;
@@ -99,7 +99,7 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  padding: var(--story-gap) var(--story-gutter);
+  padding: 28px var(--story-gutter) 0;
 }
 
 .avatar {
