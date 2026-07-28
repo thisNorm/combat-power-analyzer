@@ -125,6 +125,8 @@
   margin: var(--space-4) 0 0;
   color: var(--text-muted);
   font-size: var(--text-body-small);
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .rarityMessage strong {

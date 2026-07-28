@@ -1,7 +1,17 @@
 .card {
+  --story-safe-top: 180px;
+  --story-safe-bottom: 280px;
+  --story-gutter: 88px;
+  --story-panel-padding: 32px;
+  --story-panel-border: 4px;
+  --story-gap: 16px;
+  --story-meta-size: 28px;
+  --story-display-size: 76px;
+  --story-body-size: 28px;
+  --story-small-size: 24px;
   position: relative;
   display: grid;
-  grid-template-rows: 180px auto 500px auto minmax(0, 1fr) 280px;
+  grid-template-rows: var(--story-safe-top) auto 500px auto minmax(0, 1fr) var(--story-safe-bottom);
   width: 1080px;
   height: 1920px;
   overflow: hidden;
@@ -36,7 +46,7 @@
 }
 
 .identity {
-  padding: 0 88px;
+  padding: 0 var(--story-gutter);
   text-align: center;
 }
 
@@ -48,7 +58,7 @@
 .slot {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: var(--story-meta-size);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -68,7 +78,7 @@
   margin: 20px 0 0;
   color: var(--accent-violet);
   font-family: var(--font-display);
-  font-size: 76px;
+  font-size: var(--story-display-size);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.08;
@@ -80,7 +90,7 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  padding: 16px 88px;
+  padding: var(--story-gap) var(--story-gutter);
 }
 
 .avatar {
@@ -110,23 +120,23 @@
   margin: 6px 0 0;
   color: var(--accent-orange);
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: var(--story-meta-size);
   font-weight: 700;
 }
 
 .loadout,
 .factPanel {
-  margin: 0 88px;
-  border: 4px solid var(--border-default);
+  margin: 0 var(--story-gutter);
+  border: var(--story-panel-border) solid var(--border-default);
   background: var(--surface-panel);
   box-shadow: var(--shadow-panel);
 }
 
 .loadout {
   display: grid;
-  gap: 16px;
+  gap: var(--story-gap);
   align-content: start;
-  padding: 32px;
+  padding: var(--story-panel-padding);
 }
 
 .sectionLabel {
@@ -136,14 +146,14 @@
 .item {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: var(--story-gap);
   align-items: center;
   min-height: 92px;
   border: 2px solid var(--border-strong);
   background: var(--surface-inset);
   padding: 16px 20px;
   color: var(--text-secondary);
-  font-size: 28px;
+  font-size: var(--story-body-size);
 }
 
 .item strong {
@@ -160,7 +170,7 @@
 .emptyItem {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 28px;
+  font-size: var(--story-body-size);
 }
 
 .factPanel {
@@ -184,14 +194,14 @@
   border-top: 2px solid var(--border-default);
   padding-top: 20px;
   color: var(--text-secondary);
-  font-size: 24px;
+  font-size: var(--story-small-size);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .footer {
   align-self: end;
-  padding: 0 88px 56px;
+  padding: 0 var(--story-gutter) 56px;
   text-align: center;
 }
 
@@ -203,7 +213,7 @@
 .shortUrl {
   margin-top: 12px;
   color: var(--text-secondary);
-  font-size: 24px;
+  font-size: var(--story-small-size);
 }
 
 .cta {
