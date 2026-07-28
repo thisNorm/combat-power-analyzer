@@ -133,6 +133,10 @@
   color: var(--accent-gold);
 }
 
+.noBreak {
+  white-space: nowrap;
+}
+
 .overview {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

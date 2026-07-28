@@ -159,7 +159,12 @@ export default function ResultDashboard({ stats, onNewAnalysis, onShare }: Resul
         <h1 id="result-title" className={styles.githubId}>@{stats.githubId}</h1>
         <p className={styles.jobClass}>{stats.jobClass}</p>
         <p className={styles.subtitle}>{subtitle}</p>
-        <p className={styles.rarityMessage}><strong>{rarityLabel(weapon?.rarity ?? 'Sealed')} 장비 감정</strong> · 비교 표본이 없어 전체 개발자 비율은 산정하지 않음</p>
+        <p className={styles.rarityMessage}>
+          <strong>{rarityLabel(weapon?.rarity ?? 'Sealed')} 장비 감정</strong>
+          {' · 비교 표본이 없어 '}
+          <span className={styles.noBreak}>전체 개발자 비율은</span>
+          {' 산정하지 않음'}
+        </p>
       </div>
 
       <div className={styles.overview}>
