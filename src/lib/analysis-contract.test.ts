@@ -14,7 +14,7 @@ vi.mock('@google/generative-ai', async (importOriginal) => {
   };
 });
 
-function stubPublicGithubResponses(followers = 7): void {
+function stubPublicGithubResponses(followers = 7, publicRepositories = 3): void {
   vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
     const url = String(input);
     if (url.includes('/repos?')) {
@@ -29,7 +29,7 @@ function stubPublicGithubResponses(followers = 7): void {
     }
 
     return new Response(
-      JSON.stringify({ public_repos: 3, followers, following: 5, public_gists: 2 }),
+      JSON.stringify({ public_repos: publicRepositories, followers, following: 5, public_gists: 2 }),
       { status: 200 },
     );
   }));
@@ -107,6 +107,33 @@ describe('analysis result contract', () => {
         sourceKey: item.evidence[0]?.sourceKey,
       });
     }
+  });
+
+  it('Given complete public evidence, When a narrative is assembled, Then the fact bomb uses observed repository and language values', async () => {
+    vi.stubEnv('GEMINI_API_KEY', '');
+    stubPublicGithubResponses();
+    const { generateFactBomb } = await import('./ai');
+    const { fetchGithubStats } = await import('./github');
+
+    const result = await generateFactBomb(await fetchGithubStats('octocat'));
+
+    expect(result.aiFactBomb).toContain('공개 저장소 3개');
+    expect(result.aiFactBomb).toContain('TypeScript 신호 2개');
+    expect(result.narrative.evidenceStatus).toBe('observed');
+  });
+
+  it('Given more than one repository response page, When languages are summarized, Then partial language evidence is sealed instead of treated as complete', async () => {
+    stubPublicGithubResponses(7, 101);
+    const { fetchGithubStats } = await import('./github');
+
+    const stats = await fetchGithubStats('octocat');
+    const repositoryEvidence = stats.evidence.find(({ sourceKey }) => sourceKey === 'github.repositories');
+
+    expect(stats.languageUsage).toEqual([]);
+    expect(repositoryEvidence).toMatchObject({
+      status: 'unavailable',
+      detail: expect.stringContaining('100-item response boundary'),
+    });
   });
 
   it('Given only a volatile follower increment, When the same profile is reanalyzed, Then its RPG identity remains stable', async () => {

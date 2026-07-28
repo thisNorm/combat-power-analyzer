@@ -90,14 +90,22 @@ export async function fetchGithubStats(githubId: string): Promise<GithubStats> {
     const user = GitHubUserSchema.parse(rawUser);
     const repositories = GitHubRepositoriesSchema.parse(rawRepositories);
     const userEvidence = sourceEvidence('github.user', userUrl, 'observed', 'GitHub public user response');
-    const repositoryEvidence = sourceEvidence('github.repositories', repositoriesUrl, 'observed', 'GitHub public repositories response');
+    const repositoriesTruncated = user.public_repos > 100;
+    const repositoryEvidence = sourceEvidence(
+      'github.repositories',
+      repositoriesUrl,
+      repositoriesTruncated ? 'unavailable' : 'observed',
+      repositoriesTruncated
+        ? 'Language analysis is sealed because the public repository list exceeds the 100-item response boundary'
+        : 'GitHub public repositories response',
+    );
     const repoCount = buildMetric('repositoryCount', user.public_repos, userEvidence);
     const followers = buildMetric('followers', user.followers, userEvidence);
     const publicMetrics = [
       buildMetric('following', user.following, userEvidence),
       buildMetric('publicGists', user.public_gists, userEvidence),
     ];
-    const usages = languageUsage(repositories, repositoryEvidence);
+    const usages = repositoriesTruncated ? [] : languageUsage(repositories, repositoryEvidence);
     const fingerprintInput = JSON.stringify({
       githubId: normalizedGithubId,
       repoCount: repoCount.value,

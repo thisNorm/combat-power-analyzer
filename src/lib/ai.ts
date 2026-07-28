@@ -100,16 +100,24 @@ function localEquipment(stats: GithubStats, level: number): readonly Equipment[]
 }
 
 function localNarrative(stats: GithubStats): Narrative {
-  const templates = [
-    'Public evidence is assembled; unexplained territory remains sealed.',
-    'This profile speaks through public signals, not invented streaks.',
-    'Every displayed trait is traceable to a public source or marked unavailable.',
-  ] as const;
   const hasMetrics = stats.collectionState === 'complete';
-  const seed = personaSeed(stats);
-  const text = hasMetrics
-    ? `${stats.githubId}: ${templates[hashIndex(seed, templates.length)]}`
-    : `${stats.githubId}: public GitHub evidence is insufficient, so no unsupported claim was generated.`;
+  const repositoryCount = numericValue(stats.repoCount.value);
+  const followerCount = numericValue(stats.followers.value);
+  const primaryLanguage = stats.languageUsage[0];
+  let text: string;
+
+  if (!hasMetrics) {
+    text = `${stats.githubId}님은 공개 데이터가 부족해 오늘의 팩폭까지 봉인되었습니다.`;
+  } else if (primaryLanguage !== undefined) {
+    text = `${stats.githubId}님은 공개 저장소 ${repositoryCount}개를 펼쳐 놓고 ${primaryLanguage.language} 신호 ${primaryLanguage.repositoryCount}개로 주력 무기까지 들켰습니다.`;
+  } else if (repositoryCount > 0) {
+    text = `${stats.githubId}님은 공개 저장소 ${repositoryCount}개를 벌여 놓고도 주력 언어는 끝까지 봉인한 수상한 탐험가입니다.`;
+  } else if (followerCount > 0) {
+    text = `${stats.githubId}님은 공개 팔로워 ${followerCount}명이 지켜보는데 저장소 무기고는 아직 비어 있습니다.`;
+  } else {
+    text = `${stats.githubId}님은 공개 저장소와 팔로워가 모두 0이라 오늘의 최강 스킬이 완벽한 은신입니다.`;
+  }
+
   return {
     text,
     evidenceStatus: hasMetrics ? 'observed' : 'insufficient',
