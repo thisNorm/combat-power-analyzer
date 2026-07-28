@@ -195,7 +195,8 @@
   font-size: 36px;
   font-weight: 700;
   line-height: 1.45;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: keep-all;
 }
 
 .evidence {

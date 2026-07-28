@@ -78,6 +78,22 @@
 .body {
   overflow: auto;
   padding: var(--space-6);
+  color-scheme: dark;
+  scrollbar-color: var(--border-strong) var(--surface-inset);
+  scrollbar-width: thin;
+}
+
+.body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.body::-webkit-scrollbar-track {
+  background: var(--surface-inset);
+}
+
+.body::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface-inset);
+  background: var(--border-strong);
 }
 
 .description {

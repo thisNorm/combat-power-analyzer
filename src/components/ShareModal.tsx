@@ -36,6 +36,10 @@ function Icon({ name }: { readonly name: 'close' | 'story' | 'apps' | 'copy' | '
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
+function isShareCancellation(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
 export function ShareModal({ open, onClose, result }: ShareModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -133,6 +137,11 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
       setState('success');
       setMessage('공유 시트에서 Instagram을 선택해 스토리로 올려주세요.');
     } catch (error) {
+      if (isShareCancellation(error)) {
+        setState('default');
+        setMessage('공유를 취소했습니다.');
+        return;
+      }
       setState('failure');
       setMessage(error instanceof Error ? error.message : 'Instagram 공유를 완료하지 못했습니다.');
     }
@@ -151,6 +160,11 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
       setState('success');
       setMessage(method === 'file' ? '이미지와 링크를 공유할 앱을 선택해 주세요.' : '링크를 공유할 앱을 선택해 주세요.');
     } catch (error) {
+      if (isShareCancellation(error)) {
+        setState('default');
+        setMessage('공유를 취소했습니다.');
+        return;
+      }
       setState('failure');
       setMessage(error instanceof Error ? error.message : '앱 공유를 완료하지 못했습니다.');
     }
