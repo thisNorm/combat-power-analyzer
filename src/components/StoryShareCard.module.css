@@ -1,17 +1,26 @@
 .card {
   --story-safe-top: 180px;
   --story-safe-bottom: 280px;
+  --story-character-row: 400px;
+  --story-footer-row: 160px;
   --story-gutter: 88px;
-  --story-panel-padding: 32px;
+  --story-panel-padding: 24px;
   --story-panel-border: 4px;
-  --story-gap: 16px;
+  --story-gap: 12px;
   --story-meta-size: 28px;
-  --story-display-size: 76px;
-  --story-body-size: 28px;
+  --story-display-size: 68px;
+  --story-body-size: 26px;
   --story-small-size: 24px;
   position: relative;
   display: grid;
-  grid-template-rows: var(--story-safe-top) auto 500px auto minmax(0, 1fr) var(--story-safe-bottom);
+  grid-template-rows:
+    var(--story-safe-top)
+    auto
+    var(--story-character-row)
+    auto
+    minmax(0, 1fr)
+    var(--story-footer-row)
+    var(--story-safe-bottom);
   width: 1080px;
   height: 1920px;
   overflow: hidden;
@@ -75,7 +84,7 @@
 }
 
 .jobClass {
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   color: var(--accent-violet);
   font-family: var(--font-display);
   font-size: var(--story-display-size);
@@ -95,8 +104,8 @@
 
 .avatar {
   display: grid;
-  width: 320px;
-  height: 320px;
+  width: 272px;
+  height: 272px;
   place-items: center;
   border: 8px solid var(--accent-gold);
   outline: 8px solid var(--border-strong);
@@ -104,14 +113,14 @@
   box-shadow: inset 0 0 0 24px var(--surface-panel), 0 0 40px var(--accent-violet-deep);
   color: var(--accent-gold);
   font-family: var(--font-display);
-  font-size: 112px;
+  font-size: 96px;
   font-weight: 800;
   line-height: 1;
 }
 
 .characterName {
-  margin: 20px 0 0;
-  font-size: 48px;
+  margin: 14px 0 0;
+  font-size: 40px;
   font-weight: 800;
   overflow-wrap: anywhere;
 }
@@ -120,7 +129,7 @@
   margin: 6px 0 0;
   color: var(--accent-orange);
   font-family: var(--font-display);
-  font-size: var(--story-meta-size);
+  font-size: 26px;
   font-weight: 700;
 }
 
@@ -148,17 +157,17 @@
   grid-template-columns: 180px minmax(0, 1fr) auto;
   gap: var(--story-gap);
   align-items: center;
-  min-height: 92px;
+  min-height: 80px;
   border: 2px solid var(--border-strong);
   background: var(--surface-inset);
-  padding: 16px 20px;
+  padding: 12px 16px;
   color: var(--text-secondary);
   font-size: var(--story-body-size);
 }
 
 .item strong {
   color: var(--text-primary);
-  font-size: 32px;
+  font-size: 29px;
   overflow-wrap: anywhere;
 }
 
@@ -175,22 +184,22 @@
 
 .factPanel {
   align-self: end;
-  margin-top: 40px;
-  padding: 40px;
+  margin-top: 24px;
+  padding: 32px;
   border-color: var(--accent-violet-deep);
 }
 
 .fact {
-  margin: 20px 0 0;
+  margin: 16px 0 0;
   color: var(--text-primary);
-  font-size: 40px;
+  font-size: 36px;
   font-weight: 700;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
 .evidence {
-  margin: 28px 0 0;
+  margin: 20px 0 0;
   border-top: 2px solid var(--border-default);
   padding-top: 20px;
   color: var(--text-secondary);
@@ -200,14 +209,14 @@
 }
 
 .footer {
-  align-self: end;
-  padding: 0 var(--story-gutter) 56px;
+  align-self: center;
+  padding: 0 var(--story-gutter);
   text-align: center;
 }
 
 .brand {
   color: var(--accent-gold);
-  font-size: 40px;
+  font-size: 36px;
 }
 
 .shortUrl {
@@ -217,7 +226,7 @@
 }
 
 .cta {
-  margin: 28px 0 0;
+  margin: 16px 0 0;
   color: var(--text-primary);
   font-size: 30px;
   font-weight: 700;
