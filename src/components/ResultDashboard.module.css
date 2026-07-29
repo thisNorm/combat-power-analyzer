@@ -1,7 +1,16 @@
 .dashboard {
-  width: min(100%, 72rem);
+  width: min(100%, 90rem);
   margin: 0 auto;
   padding: var(--space-8) 0 var(--space-16);
+}
+
+.resultLayout {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.resultMain {
+  min-width: 0;
 }
 
 .header,
@@ -297,6 +306,82 @@
 .strength { margin: var(--space-6) 0 var(--space-2); color: var(--accent-lime); font-weight: 700; }
 .limitedNotice { margin-bottom: 0; color: var(--text-muted); font-size: var(--text-body-small); }
 
+.shareTeaser {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  margin-top: var(--space-10);
+  padding: var(--space-5);
+}
+
+.shareTeaser h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--text-h2);
+}
+
+.shareTeaser > button {
+  width: 100%;
+}
+
+.teaserCard {
+  display: grid;
+  gap: var(--space-3);
+  border: 1px solid var(--border-strong);
+  background:
+    radial-gradient(circle at 50% 36%, color-mix(in srgb, var(--accent-violet) 20%, transparent), transparent 9rem),
+    var(--surface-inset);
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.teaserCard p,
+.teaserCard strong {
+  margin: 0;
+  overflow-wrap: break-word;
+  word-break: keep-all;
+}
+
+.teaserCard strong {
+  color: var(--accent-violet);
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+}
+
+.teaserLevel {
+  color: var(--accent-gold);
+  font-family: var(--font-display);
+  font-size: var(--text-caption);
+  font-weight: 700;
+}
+
+.teaserAvatar {
+  display: grid;
+  width: 5.5rem;
+  aspect-ratio: 1;
+  place-items: center;
+  justify-self: center;
+  border: 2px solid var(--accent-gold);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-rare);
+  color: var(--accent-gold);
+  font-family: var(--font-display);
+  font-size: var(--text-h2);
+  font-weight: 800;
+}
+
+.teaserCard > p:last-child,
+.teaserNote {
+  color: var(--text-secondary);
+  font-size: var(--text-body-small);
+  line-height: 1.6;
+}
+
+.teaserNote {
+  margin: 0;
+  word-break: keep-all;
+}
+
 .dialogBackdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; overflow: auto; background: var(--surface-overlay); padding: var(--space-4); }
 .dialog { width: min(100%, 38rem); max-height: min(44rem, calc(100dvh - var(--space-8))); overflow: auto; border: 1px solid var(--border-strong); border-radius: var(--radius-action); background: var(--surface-elevated); box-shadow: 0 24px 80px color-mix(in srgb, var(--surface-canvas) 82%, transparent); padding: var(--space-6); }
 .dialogHeader { align-items: start; justify-content: space-between; gap: var(--space-3); }
@@ -326,6 +411,18 @@
 
 @media (max-width: 60rem) {
   .statGrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 64rem) {
+  .resultLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 20rem);
+    align-items: start;
+  }
+
+  .shareTeaser {
+    position: sticky;
+    top: var(--space-6);
+  }
 }
 
 @media (max-width: 31rem) {

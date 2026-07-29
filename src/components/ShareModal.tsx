@@ -214,7 +214,11 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
 
         <div className={styles.body}>
           <p id={descriptionId} className={styles.description}>스토리용 9:16 카드를 만들고, 링크 또는 이미지로 <span className={styles.nowrap}>공유할 수 있습니다.</span></p>
-          <div className={styles.preview} aria-label="스토리 카드 미리보기">
+          <div
+            className={styles.preview}
+            role="img"
+            aria-label={`${result.githubId}님의 ${result.jobClass} Story 카드 미리보기. 레벨 ${result.level}, 대표 팩폭과 관측 장비가 포함됩니다.`}
+          >
             <div className={styles.previewScale}><StoryShareCard ref={cardRef} result={result} shareUrl={publicUrl} ariaHidden /></div>
           </div>
 

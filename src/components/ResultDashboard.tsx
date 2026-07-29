@@ -133,7 +133,9 @@ export default function ResultDashboard({ stats, onNewAnalysis, onShare }: Resul
   const critical = Math.floor(stats.attack * 0.3);
   const weapon = equipment.find((item) => item.slot === 'weapon');
   const armor = equipment.find((item) => item.slot === 'armor');
-  const subtitle = stats.narrative.text || stats.aiFactBomb;
+  const subtitle = (stats.narrative.text || stats.aiFactBomb)
+    .replace(/펼쳐 놓고/g, '펼쳐\u00a0놓고')
+    .replace(/ 신호 (?=\d)/g, '\u00a0신호\u00a0');
 
   const statRows = [
     { name: '생명력', value: stats.hp, basis: `레벨 ${stats.level}에서 산출된 HP입니다.` },
@@ -154,105 +156,124 @@ export default function ResultDashboard({ stats, onNewAnalysis, onShare }: Resul
         </div>
       </header>
 
-      <div className={styles.identity}>
-        <p className={styles.level}>LV. {stats.level}</p>
-        <h1 id="result-title" className={styles.githubId}>@{stats.githubId}</h1>
-        <p className={styles.jobClass}>{stats.jobClass}</p>
-        <p className={styles.subtitle}>{subtitle}</p>
-        <p className={styles.rarityMessage}>
-          <strong>{rarityLabel(weapon?.rarity ?? 'Sealed')} 장비 감정</strong>
-          {' · 비교 표본이 없어 '}
-          <span className={styles.noBreak}>전체 개발자 비율은</span>
-          {' 산정하지 않음'}
-        </p>
-      </div>
-
-      <div className={styles.overview}>
-        <section className={`${styles.stage} pixel-panel`} aria-labelledby="character-stage-title">
-          <h2 id="character-stage-title" className="screen-reader-text">캐릭터 무대</h2>
-          <div className={styles.stageGlow} aria-hidden="true" />
-          {weapon ? <span className={`${styles.stageBadge} ${styles.weaponBadge}`}>{SLOT_LABELS.weapon}<b>{rarityLabel(weapon.rarity)}</b></span> : null}
-          <div className={styles.avatarFrame}>
-            {avatarFailed ? (
-              <span className={styles.initials} aria-label={`${stats.githubId}의 이니셜`}>{initials}</span>
-            ) : (
-              <Image
-                className={styles.avatar}
-                src={`https://github.com/${encodeURIComponent(stats.githubId)}.png?size=256`}
-                alt={`${stats.githubId} GitHub 아바타`}
-                width={160}
-                height={160}
-                unoptimized
-                onError={() => setAvatarFailed(true)}
-              />
-            )}
+      <div className={styles.resultLayout}>
+        <div className={styles.resultMain}>
+          <div className={styles.identity}>
+            <p className={styles.level}>LV. {stats.level}</p>
+            <h1 id="result-title" className={styles.githubId}>@{stats.githubId}</h1>
+            <p className={styles.jobClass}>{stats.jobClass}</p>
+            <p className={styles.subtitle}>{subtitle}</p>
+            <p className={styles.rarityMessage}>
+              <strong>{rarityLabel(weapon?.rarity ?? 'Sealed')} 장비 감정</strong>
+              {' · 비교 표본이 없어 '}
+              <span className={styles.noBreak}>전체 개발자 비율은</span>
+              {' 산정하지 않음'}
+            </p>
           </div>
-          {armor ? <span className={`${styles.stageBadge} ${styles.armorBadge}`}>{SLOT_LABELS.armor}<b>{rarityLabel(armor.rarity)}</b></span> : null}
-          <p className={styles.stageCaption}>공개 GitHub 신호로 장비를 감정한 주인공</p>
-        </section>
 
-        <section className={`${styles.power} pixel-panel`} aria-labelledby="power-title">
-          <p className="pixel-kicker">DETERMINISTIC SCORE</p>
-          <h2 id="power-title">전투력 <strong>{compactNumber(combatPower)}</strong></h2>
-          <p>HP + 공격 + 방어 + 회피의 합계입니다. 관측되지 않은 지표는 더하지 않았습니다.</p>
-          <dl className={styles.statGrid}>
-            {statRows.map((stat) => (
-              <div className={styles.stat} key={stat.name}>
-                <dt>{stat.name}</dt>
-                <dd>{compactNumber(stat.value)}</dd>
-                <button type="button" className={styles.infoButton} aria-label={`${stat.name} 계산 근거`}>
-                  <span aria-hidden="true">i</span>
-                  <span className={styles.tooltip} role="tooltip">{stat.basis}</span>
-                </button>
+          <div className={styles.overview}>
+            <section className={`${styles.stage} pixel-panel`} aria-labelledby="character-stage-title">
+              <h2 id="character-stage-title" className="screen-reader-text">캐릭터 무대</h2>
+              <div className={styles.stageGlow} aria-hidden="true" />
+              {weapon ? <span className={`${styles.stageBadge} ${styles.weaponBadge}`}>{SLOT_LABELS.weapon}<b>{rarityLabel(weapon.rarity)}</b></span> : null}
+              <div className={styles.avatarFrame}>
+                {avatarFailed ? (
+                  <span className={styles.initials} aria-label={`${stats.githubId}의 이니셜`}>{initials}</span>
+                ) : (
+                  <Image
+                    className={styles.avatar}
+                    src={`https://github.com/${encodeURIComponent(stats.githubId)}.png?size=256`}
+                    alt={`${stats.githubId} GitHub 아바타`}
+                    width={160}
+                    height={160}
+                    unoptimized
+                    onError={() => setAvatarFailed(true)}
+                  />
+                )}
               </div>
-            ))}
-          </dl>
-        </section>
-      </div>
+              {armor ? <span className={`${styles.stageBadge} ${styles.armorBadge}`}>{SLOT_LABELS.armor}<b>{rarityLabel(armor.rarity)}</b></span> : null}
+              <p className={styles.stageCaption}>공개 GitHub 신호로 장비를 감정한 주인공</p>
+            </section>
 
-      <section className={styles.equipmentSection} aria-labelledby="equipment-title">
-        <div className={styles.sectionHeading}>
-          <div>
-            <p className="pixel-kicker">EQUIPMENT ARCHIVE</p>
-            <h2 id="equipment-title">근거 장비 6칸</h2>
+            <section className={`${styles.power} pixel-panel`} aria-labelledby="power-title">
+              <p className="pixel-kicker">DETERMINISTIC SCORE</p>
+              <h2 id="power-title">전투력 <strong>{compactNumber(combatPower)}</strong></h2>
+              <p>HP + 공격 + 방어 + 회피의 합계입니다. 관측되지 않은 지표는 더하지 않았습니다.</p>
+              <dl className={styles.statGrid}>
+                {statRows.map((stat) => (
+                  <div className={styles.stat} key={stat.name}>
+                    <dt>{stat.name}</dt>
+                    <dd>{compactNumber(stat.value)}</dd>
+                    <button type="button" className={styles.infoButton} aria-label={`${stat.name} 계산 근거`}>
+                      <span aria-hidden="true">i</span>
+                      <span className={styles.tooltip} role="tooltip">{stat.basis}</span>
+                    </button>
+                  </div>
+                ))}
+              </dl>
+            </section>
           </div>
-          <p>카드를 열어 출처와 감정 상태를 확인하세요.</p>
-        </div>
-        <div className={styles.equipmentGrid}>
-          {equipment.map((item) => {
-            const sealed = item.evidenceStatus !== 'observed';
-            return (
-              <button
-                type="button"
-                className={`${styles.equipmentCard} ${sealed ? styles.sealed : styles[item.rarity.toLowerCase()] ?? ''}`}
-                key={item.slot}
-                onClick={() => setSelectedEquipment(item)}
-                aria-haspopup="dialog"
-                aria-label={`${SLOT_LABELS[item.slot] ?? item.slot}: ${item.name} 근거 열기`}
-              >
-                <span className={styles.slotLabel}>{SLOT_LABELS[item.slot] ?? item.slot}</span>
-                <span className={styles.itemName}>{sealed ? '봉인 슬롯' : item.name}</span>
-                <span className={styles.itemEffect}>{sealed ? '공개 데이터 부족' : item.effect}</span>
-                <span className={styles.rarity}>{sealed ? '봉인 · 공개 데이터 부족' : rarityLabel(item.rarity)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
 
-      <section className={`${styles.factBomb} pixel-panel`} aria-labelledby="fact-bomb-title">
-        <p className="pixel-kicker">EVIDENCE-BOUND FACT BOMB</p>
-        <h2 id="fact-bomb-title">대표 팩폭</h2>
-        <p className={styles.factSentence}>{subtitle}</p>
-        <h3>확인한 공개 근거</h3>
-        <ul className={styles.evidenceList}>
-          {evidenceLines.length > 0 ? evidenceLines.map((entry) => (
-            <li key={`${entry.sourceKey}-${entry.detail}`}><strong>{entry.sourceKey}</strong><span>{entry.detail}</span></li>
-          )) : <li>공개 근거를 받지 못해 확인 가능한 항목이 없습니다.</li>}
-        </ul>
-        <p className={styles.strength}>{strengthLine(stats)}</p>
-        <p className={styles.limitedNotice}>데이터 제한: 비공개 활동, 개인 저장소, 총 커밋 수는 공개 API에서 확인되지 않으면 표시하지 않습니다.</p>
-      </section>
+          <section className={styles.equipmentSection} aria-labelledby="equipment-title">
+            <div className={styles.sectionHeading}>
+              <div>
+                <p className="pixel-kicker">EQUIPMENT ARCHIVE</p>
+                <h2 id="equipment-title">근거 장비 6칸</h2>
+              </div>
+              <p>카드를 열어 출처와 감정 상태를 확인하세요.</p>
+            </div>
+            <div className={styles.equipmentGrid}>
+              {equipment.map((item) => {
+                const sealed = item.evidenceStatus !== 'observed';
+                return (
+                  <button
+                    type="button"
+                    className={`${styles.equipmentCard} ${sealed ? styles.sealed : styles[item.rarity.toLowerCase()] ?? ''}`}
+                    key={item.slot}
+                    onClick={() => setSelectedEquipment(item)}
+                    aria-haspopup="dialog"
+                    aria-label={`${SLOT_LABELS[item.slot] ?? item.slot}: ${item.name} 근거 열기`}
+                  >
+                    <span className={styles.slotLabel}>{SLOT_LABELS[item.slot] ?? item.slot}</span>
+                    <span className={styles.itemName}>{sealed ? '봉인 슬롯' : item.name}</span>
+                    <span className={styles.itemEffect}>{sealed ? '공개 데이터 부족' : item.effect}</span>
+                    <span className={styles.rarity}>{sealed ? '봉인 · 공개 데이터 부족' : rarityLabel(item.rarity)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className={`${styles.factBomb} pixel-panel`} aria-labelledby="fact-bomb-title">
+            <p className="pixel-kicker">EVIDENCE-BOUND FACT BOMB</p>
+            <h2 id="fact-bomb-title">대표 팩폭</h2>
+            <p className={styles.factSentence}>{subtitle}</p>
+            <h3>확인한 공개 근거</h3>
+            <ul className={styles.evidenceList}>
+              {evidenceLines.length > 0 ? evidenceLines.map((entry) => (
+                <li key={`${entry.sourceKey}-${entry.detail}`}><strong>{entry.sourceKey}</strong><span>{entry.detail}</span></li>
+              )) : <li>공개 근거를 받지 못해 확인 가능한 항목이 없습니다.</li>}
+            </ul>
+            <p className={styles.strength}>{strengthLine(stats)}</p>
+            <p className={styles.limitedNotice}>데이터 제한: 비공개 활동, 개인 저장소, 총 커밋 수는 공개 API에서 확인되지 않으면 표시하지 않습니다.</p>
+          </section>
+        </div>
+
+        {onShare ? (
+          <aside className={`${styles.shareTeaser} pixel-panel`} aria-labelledby="share-teaser-title">
+            <p className="pixel-kicker">SHARE RESULT</p>
+            <h2 id="share-teaser-title">결과 공유하기</h2>
+            <div className={styles.teaserCard} aria-label={`${stats.githubId} 공유 카드 요약`}>
+              <p className={styles.teaserLevel}>LV. {stats.level} · @{stats.githubId}</p>
+              <strong>{stats.jobClass}</strong>
+              <span className={styles.teaserAvatar} aria-hidden="true">{initials}</span>
+              <p>{subtitle}</p>
+            </div>
+            <button type="button" className="pixel-button" onClick={onShare}>9:16 Story 카드 열기</button>
+            <p className={styles.teaserNote}>이미지 저장, 시스템 공유, 주소 복사를 한곳에서 선택할 수 있습니다.</p>
+          </aside>
+        ) : null}
+      </div>
 
       <EquipmentEvidenceDialog item={selectedEquipment} onClose={() => setSelectedEquipment(null)} />
     </section>
