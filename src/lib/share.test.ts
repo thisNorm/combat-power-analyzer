@@ -150,6 +150,23 @@ describe('story sharing helpers', () => {
     });
   });
 
+  it('Given a prepared image is unavailable, When sharing, Then it immediately uses text and URL', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', { share, canShare: vi.fn() });
+
+    await expect(shareWithSystem({
+      githubId: 'octocat',
+      jobClass: 'Repository Warden',
+      factBomb: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    })).resolves.toBe('text');
+    expect(share).toHaveBeenCalledWith({
+      title: 'Code Hunter | Repository Warden',
+      text: 'Evidence only.',
+      url: 'https://code-hunter.test/?github=octocat',
+    });
+  });
+
   it('Given no Web Share API, When sharing, Then it reports unsupported for caller fallback', async () => {
     const file = new File(['story'], 'story.png', { type: 'image/png' });
     vi.stubGlobal('navigator', {});

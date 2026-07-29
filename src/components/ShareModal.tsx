@@ -46,12 +46,16 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const fileRef = useRef<File | null>(null);
+  const fileIdentityRef = useRef<string | null>(null);
   const generationRef = useRef<Promise<File> | null>(null);
+  const generationVersionRef = useRef(0);
   const titleId = useId();
   const descriptionId = useId();
   const [state, setState] = useState<ShareState>('default');
   const [message, setMessage] = useState('스토리 이미지를 만들어 원하는 곳에 공유하세요.');
+  const [preparedIdentity, setPreparedIdentity] = useState<string | null>(null);
   const publicUrl = createPublicShareUrl(result.githubId);
+  const shareIdentity = `${result.githubId}\u0000${result.jobClass}`;
   const isGenerating = state === 'generating';
 
   useEffect(() => {
@@ -101,32 +105,66 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
   }, [onClose, open]);
 
   const generateImage = useCallback(async (): Promise<File> => {
-    if (fileRef.current) return fileRef.current;
+    if (fileRef.current && fileIdentityRef.current === shareIdentity) return fileRef.current;
     if (generationRef.current) return generationRef.current;
     if (!cardRef.current) throw new Error('공유 카드를 준비하지 못했습니다.');
 
+    fileRef.current = null;
+    fileIdentityRef.current = null;
+    const generationVersion = generationVersionRef.current;
     setState('generating');
     setMessage('스토리 이미지를 준비하고 있습니다.');
     const generation = captureStoryCard(cardRef.current, buildStoryFilename(result.githubId, result.jobClass));
     generationRef.current = generation;
     try {
       const file = await generation;
-      fileRef.current = file;
-      setState('success');
-      setMessage('스토리 이미지가 준비되었습니다.');
+      if (generationVersion === generationVersionRef.current) {
+        fileRef.current = file;
+        fileIdentityRef.current = shareIdentity;
+        setPreparedIdentity(shareIdentity);
+        setState('success');
+        setMessage('스토리 이미지가 준비되었습니다.');
+      }
       return file;
     } catch (error) {
-      setState('failure');
-      setMessage(error instanceof Error ? error.message : '스토리 이미지를 만들지 못했습니다.');
+      if (generationVersion === generationVersionRef.current) {
+        setPreparedIdentity(null);
+        setState('failure');
+        setMessage(error instanceof Error ? error.message : '스토리 이미지를 만들지 못했습니다.');
+      }
       throw error;
     } finally {
-      generationRef.current = null;
+      if (generationRef.current === generation) generationRef.current = null;
     }
-  }, [result.githubId, result.jobClass]);
+  }, [result.githubId, result.jobClass, shareIdentity]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (fileRef.current && fileIdentityRef.current === shareIdentity) return;
+    fileRef.current = null;
+    fileIdentityRef.current = null;
+    generationRef.current = null;
+    const generationVersion = ++generationVersionRef.current;
+    const frame = window.requestAnimationFrame(() => {
+      void generateImage().catch(() => undefined);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (generationVersionRef.current === generationVersion) generationVersionRef.current += 1;
+      generationRef.current = null;
+    };
+  }, [generateImage, open, shareIdentity]);
 
   const handleInstagram = async () => {
     try {
-      const file = await generateImage();
+      const file = fileRef.current;
+      if (!file) {
+        setState('failure');
+        setMessage('스토리 이미지가 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+        return;
+      }
       if (!canShareFiles(file)) {
         saveStoryImage(file);
         setState('unsupported');
@@ -149,7 +187,7 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
 
   const handleOtherApps = async () => {
     try {
-      const file = await generateImage();
+      const file = fileRef.current ?? undefined;
       const method = await shareWithSystem({ file, githubId: result.githubId, jobClass: result.jobClass, factBomb: result.aiFactBomb, url: publicUrl });
       if (method === 'unsupported') {
         await copyShareUrl(publicUrl);
@@ -223,7 +261,7 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
           </div>
 
           <div className={styles.actions} aria-label="공유 동작">
-            <button type="button" className="pixel-button" onClick={() => void handleInstagram()} disabled={isGenerating}><Icon name="story" />Instagram Story</button>
+            <button type="button" className="pixel-button" onClick={() => void handleInstagram()} disabled={isGenerating || preparedIdentity !== shareIdentity}><Icon name="story" />Instagram Story</button>
             <button type="button" className={styles.secondaryAction} onClick={() => void handleOtherApps()} disabled={isGenerating}><Icon name="apps" />다른 앱</button>
             <button type="button" className={styles.secondaryAction} onClick={() => void handleCopy()} disabled={isGenerating}><Icon name="copy" />링크 복사</button>
             <button type="button" className={styles.secondaryAction} onClick={() => void handleSave()} disabled={isGenerating}><Icon name="save" />이미지 저장</button>

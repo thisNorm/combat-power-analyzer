@@ -6,7 +6,7 @@ export const STORY_HEIGHT = 1920;
 export type ShareMethod = 'file' | 'text' | 'unsupported';
 
 export interface SystemSharePayload {
-  readonly file: File;
+  readonly file?: File;
   readonly githubId: string;
   readonly jobClass: string;
   readonly factBomb: string;
@@ -149,7 +149,7 @@ export async function shareWithSystem(payload: SystemSharePayload): Promise<Shar
   if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') return 'unsupported';
 
   const title = `Code Hunter | ${payload.jobClass}`;
-  if (canShareFiles(payload.file)) {
+  if (payload.file && canShareFiles(payload.file)) {
     await navigator.share({ title, text: payload.factBomb, url: payload.url, files: [payload.file] });
     return 'file';
   }
