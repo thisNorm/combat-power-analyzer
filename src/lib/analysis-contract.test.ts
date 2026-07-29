@@ -197,6 +197,23 @@ describe('analysis result contract', () => {
     expect(geminiSdk.getGenerativeModel).not.toHaveBeenCalled();
   });
 
+  it('Given aliased analysis fields, When the GraphQL document is validated, Then only one provider-backed analysis is allowed', async () => {
+    const { buildASTSchema, parse, validate } = await import('graphql');
+    const { typeDefs } = await import('../graphql/schema');
+    const { singleAnalysisFieldRule } = await import('../graphql/validation');
+    const schema = buildASTSchema(typeDefs);
+    const document = parse(`
+      query {
+        first: getCombatPower(githubId: "octocat") { githubId }
+        second: getCombatPower(githubId: "torvalds") { githubId }
+      }
+    `);
+
+    expect(validate(schema, document, [singleAnalysisFieldRule])).toEqual([
+      expect.objectContaining({ message: 'Only one GitHub analysis may be requested per operation.' }),
+    ]);
+  });
+
   it('Given more than one repository response page, When languages are summarized, Then partial language evidence is sealed instead of treated as complete', async () => {
     stubPublicGithubResponses(7, 101);
     const { fetchGithubStats } = await import('./github');
