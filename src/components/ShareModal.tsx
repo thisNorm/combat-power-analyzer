@@ -213,7 +213,7 @@ export function ShareModal({ open, onClose, result }: ShareModalProps) {
         </header>
 
         <div className={styles.body}>
-          <p id={descriptionId} className={styles.description}>스토리용 9:16 카드를 만들고, 링크 또는 이미지로 공유할 수 있습니다.</p>
+          <p id={descriptionId} className={styles.description}>스토리용 9:16 카드를 만들고, 링크 또는 이미지로 <span className={styles.nowrap}>공유할 수 있습니다.</span></p>
           <div className={styles.preview} aria-label="스토리 카드 미리보기">
             <div className={styles.previewScale}><StoryShareCard ref={cardRef} result={result} shareUrl={publicUrl} ariaHidden /></div>
           </div>

@@ -103,6 +103,10 @@
   word-break: keep-all;
 }
 
+.nowrap {
+  white-space: nowrap;
+}
+
 .preview {
   width: min(100%, 336px);
   height: 598px;

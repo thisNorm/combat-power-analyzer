@@ -35,6 +35,7 @@ export const StoryShareCard = forwardRef<HTMLDivElement, StoryShareCardProps>(fu
   const shortUrl = shareUrl
     ? `${new URL(shareUrl).host}/?github=${encodeURIComponent(result.githubId)}`
     : `/?github=${encodeURIComponent(result.githubId)}`;
+  const factBomb = (result.aiFactBomb || result.narrative.text).replace(/ 신호 (?=\d)/g, '\u00a0신호\u00a0');
 
   return (
     <article
@@ -69,7 +70,7 @@ export const StoryShareCard = forwardRef<HTMLDivElement, StoryShareCardProps>(fu
 
       <section className={styles.factPanel} aria-label="대표 팩폭">
         <p className={styles.sectionLabel}>FACT BOMB</p>
-        <p className={styles.fact}>{result.aiFactBomb || result.narrative.text}</p>
+        <p className={styles.fact}>{factBomb}</p>
         {evidence && <p className={styles.evidence}>근거 · {evidence.detail}</p>}
       </section>
 

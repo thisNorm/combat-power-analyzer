@@ -62,6 +62,21 @@
 
 html {
   background: var(--surface-canvas);
+  color-scheme: dark;
+  scrollbar-color: var(--border-strong) var(--surface-inset);
+}
+
+html::-webkit-scrollbar {
+  width: 10px;
+}
+
+html::-webkit-scrollbar-track {
+  background: var(--surface-inset);
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface-inset);
+  background: var(--border-strong);
 }
 
 body {
