@@ -14,6 +14,23 @@ const NARRATIVE_SCHEMA: ResponseSchema = {
   required: ['factBomb'],
 };
 
+const GEMINI_VERIFICATION_TIMEOUT_MS = 4_000;
+const NARRATIVE_IDENTIFIER_SUFFIX = '님은';
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('Gemini verification timed out.')), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
 function stableHash(value: string): string {
   let hash = 2_166_136_261;
   for (const character of value) {
@@ -130,6 +147,11 @@ async function verifyNarrativeWithGemini(fallback: Narrative): Promise<Narrative
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (apiKey === undefined || apiKey.length === 0) return fallback;
 
+  const identifierMarker = fallback.text.indexOf(NARRATIVE_IDENTIFIER_SUFFIX);
+  const groundedSuffix = identifierMarker >= 0
+    ? fallback.text.slice(identifierMarker + NARRATIVE_IDENTIFIER_SUFFIX.length)
+    : fallback.text;
+
   try {
     const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
       model: 'gemini-3.5-flash',
@@ -139,14 +161,23 @@ async function verifyNarrativeWithGemini(fallback: Narrative): Promise<Narrative
         responseSchema: NARRATIVE_SCHEMA,
       },
     });
-    const response = await model.generateContent([
-      'Return the exact evidence-bound Korean narrative below unchanged as the factBomb JSON field. Do not add, remove, translate, or rewrite any character.',
-      fallback.text,
-    ].join('\n'));
-    const raw: unknown = JSON.parse(await response.response.text());
-    const parsed = NarrativeResponseSchema.safeParse(raw);
-    return parsed.success && parsed.data.factBomb === fallback.text
-      ? { ...fallback, text: parsed.data.factBomb }
+    const parsed = await withTimeout(
+      model.generateContent([
+        'Return the exact evidence-bound Korean narrative suffix below unchanged as the factBomb JSON field. The developer identifier is intentionally omitted and must not be inferred or added. Do not add, remove, translate, or rewrite any character.',
+        groundedSuffix,
+      ].join('\n')).then(async (response) => {
+        const raw: unknown = JSON.parse(await response.response.text());
+        return NarrativeResponseSchema.safeParse(raw);
+      }),
+      GEMINI_VERIFICATION_TIMEOUT_MS,
+    );
+    return parsed.success && parsed.data.factBomb === groundedSuffix
+      ? {
+          ...fallback,
+          text: identifierMarker >= 0
+            ? `${fallback.text.slice(0, identifierMarker)}${NARRATIVE_IDENTIFIER_SUFFIX}${parsed.data.factBomb}`
+            : parsed.data.factBomb,
+        }
       : fallback;
   } catch {
     return fallback;

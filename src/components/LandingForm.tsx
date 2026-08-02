@@ -44,6 +44,9 @@ export default function LandingForm({ onSubmit }: { onSubmit: (id: string) => vo
           <p className="landing-help" id="github-id-help">
             공개로 확인할 수 있는 GitHub 활동만 분석합니다.
           </p>
+          <p className="landing-help">
+            설정된 경우 공개 GitHub 지표의 근거 문장이 Google Gemini로 검증될 수 있습니다. 사용자명 자체는 전송하지 않습니다.
+          </p>
         </form>
       </div>
     </section>

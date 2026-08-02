@@ -44,6 +44,7 @@ describe('analysis result contract', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   });
@@ -167,6 +168,45 @@ describe('analysis result contract', () => {
 
     expect(second.aiFactBomb).toBe(first.aiFactBomb);
     expect(generateContent).toHaveBeenCalledTimes(2);
+  });
+
+  it('Given Gemini verification is configured, When a narrative is sent for verification, Then the GitHub identifier is omitted from the third-party prompt', async () => {
+    vi.stubEnv('GEMINI_API_KEY', 'configured-test-key');
+    stubPublicGithubResponses();
+    const generateContent = vi.fn(async (prompt: string) => ({
+      response: {
+        text: vi.fn().mockResolvedValue(JSON.stringify({ factBomb: prompt.split('\n').at(-1) ?? '' })),
+      },
+    }));
+    geminiSdk.getGenerativeModel.mockReturnValue({ generateContent });
+    const { generateFactBomb } = await import('./ai');
+    const { fetchGithubStats } = await import('./github');
+
+    const result = await generateFactBomb(await fetchGithubStats('octocat'));
+    const prompt = generateContent.mock.calls[0]?.[0] as string;
+
+    expect(prompt).not.toContain('octocat');
+    expect(prompt).toContain('공개 저장소 3개');
+    expect(result.aiFactBomb).toContain('octocat님은');
+  });
+
+  it('Given Gemini verification never resolves, When a narrative is generated, Then the deterministic local narrative is returned after the hard timeout', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('GEMINI_API_KEY', 'configured-test-key');
+    stubPublicGithubResponses();
+    geminiSdk.getGenerativeModel.mockReturnValue({
+      generateContent: vi.fn(() => new Promise<never>(() => undefined)),
+    });
+    const { generateFactBomb } = await import('./ai');
+    const { fetchGithubStats } = await import('./github');
+    const resultPromise = generateFactBomb(await fetchGithubStats('octocat'));
+
+    await vi.advanceTimersByTimeAsync(4_000);
+    const result = await resultPromise;
+
+    expect(result.aiFactBomb).toContain('공개 저장소 3개');
+    expect(result.aiFactBomb).toContain('TypeScript 신호 2개');
+    vi.useRealTimers();
   });
 
   it('Given an invalid direct GraphQL username, When analysis is requested, Then no GitHub or Gemini request is made', async () => {
