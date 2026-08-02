@@ -15,7 +15,6 @@ const GET_COMBAT_POWER = gql`
   query GetCombatPower($githubId: String!, $forceRefresh: Boolean) {
     getCombatPower(githubId: $githubId, forceRefresh: $forceRefresh) {
       githubId
-      commitCount
       fingerprint
       collectionState
       repoCount: repoMetric { key value evidence { sourceKey sourceUrl status detail } }

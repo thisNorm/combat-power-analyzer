@@ -185,9 +185,12 @@ async function verifyNarrativeWithGemini(fallback: Narrative): Promise<Narrative
 }
 
 export async function generateFactBomb(stats: GithubStats): Promise<AnalysisResult> {
+  const hasObservedProfile = stats.collectionState === 'complete';
   const repoCount = numericValue(stats.repoCount.value);
   const followers = numericValue(stats.followers.value);
-  const level = Math.min(99, 1 + Math.floor(repoCount / 2) + Math.floor(followers / 10) + stats.languageUsage.length);
+  const level = hasObservedProfile
+    ? Math.min(99, 1 + Math.floor(repoCount / 2) + Math.floor(followers / 10) + stats.languageUsage.length)
+    : 1;
   const equipment = localEquipment(stats, level);
   const fallbackNarrative = localNarrative(stats);
   const narrative = await verifyNarrativeWithGemini(fallbackNarrative);
@@ -196,14 +199,16 @@ export async function generateFactBomb(stats: GithubStats): Promise<AnalysisResu
 
   return {
     ...stats,
+    // The legacy non-null GraphQL field uses zero only as a compatibility
+    // sentinel. Evidence-aware clients consume estimatedCommitCount instead.
     commitCount: stats.estimatedCommitCount.value ?? 0,
     mainLanguages: stats.languageUsage.map((usage) => usage.language),
     level,
     jobClass: classes[hashIndex(seed, classes.length)] ?? classes[0],
-    hp: 100 + level * 50,
-    attack: 10 + level * 7,
-    defense: 8 + level * 5,
-    evasion: 3 + Math.floor(level / 2),
+    hp: hasObservedProfile ? 100 + level * 50 : 0,
+    attack: hasObservedProfile ? 10 + level * 7 : 0,
+    defense: hasObservedProfile ? 8 + level * 5 : 0,
+    evasion: hasObservedProfile ? 3 + Math.floor(level / 2) : 0,
     items: equipment,
     equipment,
     narrative,

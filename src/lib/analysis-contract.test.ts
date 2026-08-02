@@ -91,6 +91,7 @@ describe('analysis result contract', () => {
       narrative: expect.objectContaining({ evidenceStatus: 'insufficient' }),
     });
     expect(result.equipment).toHaveLength(6);
+    expect(result).toMatchObject({ level: 1, hp: 0, attack: 0, defense: 0, evasion: 0 });
     expect(geminiSdk.getGenerativeModel).not.toHaveBeenCalled();
   });
 

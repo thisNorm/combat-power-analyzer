@@ -59,7 +59,8 @@ export interface Narrative {
 }
 
 export interface AnalysisResult extends GithubStats {
-  readonly commitCount: number;
+  /** Legacy GraphQL compatibility field. Use estimatedCommitCount for evidence-aware consumers. */
+  readonly commitCount?: number;
   readonly mainLanguages: readonly string[];
   readonly level: number;
   readonly jobClass: string;

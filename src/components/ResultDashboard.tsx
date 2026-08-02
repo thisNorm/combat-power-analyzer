@@ -3,50 +3,18 @@
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
 
-import type { AnalysisResult } from '../types/analysis';
-import EquipmentEvidenceDialog, { type EvidenceItem } from './EquipmentEvidenceDialog';
+import { EQUIPMENT_SLOTS } from '../types/analysis';
+import type { AnalysisResult, Equipment, EquipmentSlot, SourceEvidence } from '../types/analysis';
+import EquipmentEvidenceDialog from './EquipmentEvidenceDialog';
 import styles from './ResultDashboard.module.css';
 
-type Evidence = {
-  readonly sourceKey: string;
-  readonly sourceUrl: string;
-  readonly status: string;
-  readonly detail: string;
-};
-
-type Metric = {
-  readonly key: string;
-  readonly value: number | null;
-  readonly evidence: Evidence;
-};
-
-type Equipment = EvidenceItem & {
-  readonly slot: string;
-  readonly rarity: string;
-};
-
-type DashboardStats = Pick<AnalysisResult,
-  'githubId' | 'commitCount' | 'level' | 'jobClass' | 'hp' | 'attack' | 'defense' | 'evasion' | 'mainLanguages' | 'aiFactBomb'
-> & {
-  readonly collectionState: string;
-  readonly repoCount: Metric;
-  readonly followers: Metric;
-  readonly publicMetrics: readonly Metric[];
-  readonly languageUsage: readonly { language: string; repositoryCount: number; ratio: number; evidence: Evidence }[];
-  readonly estimatedCommitCount: { value: number | null; formula: string; evidence: Evidence };
-  readonly evidence: readonly Evidence[];
-  readonly items: readonly Equipment[];
-  readonly equipment: readonly Equipment[];
-  readonly narrative: { text: string; evidenceStatus: string; evidence: readonly Evidence[] };
-};
-
 interface ResultDashboardProps {
-  readonly stats: DashboardStats;
+  readonly stats: AnalysisResult;
   readonly onNewAnalysis: () => void;
   readonly onShare?: () => void;
 }
 
-const SLOT_LABELS: Record<string, string> = {
+const SLOT_LABELS: Record<EquipmentSlot, string> = {
   weapon: '무기',
   helm: '투구',
   armor: '갑옷',
@@ -55,7 +23,7 @@ const SLOT_LABELS: Record<string, string> = {
   relic: '유물',
 };
 
-const SLOT_ORDER = ['weapon', 'helm', 'armor', 'gloves', 'boots', 'relic'];
+const SLOT_ORDER = EQUIPMENT_SLOTS;
 
 function valueOf(value: number | null | undefined): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -73,7 +41,7 @@ function rarityLabel(rarity: string): string {
   return '일반';
 }
 
-function equipmentFor(stats: DashboardStats): Equipment[] {
+function equipmentFor(stats: AnalysisResult): Equipment[] {
   const listed = stats.equipment.length > 0 ? stats.equipment : stats.items;
   const bySlot = new Map(listed.map((item) => [item.slot, item]));
   const fallbackEvidence = stats.evidence[0] ?? stats.repoCount.evidence;
@@ -89,7 +57,7 @@ function equipmentFor(stats: DashboardStats): Equipment[] {
   });
 }
 
-function observedEvidence(stats: DashboardStats): Evidence[] {
+function observedEvidence(stats: AnalysisResult): SourceEvidence[] {
   const evidence = [
     stats.repoCount.evidence,
     stats.followers.evidence,
@@ -107,7 +75,7 @@ function observedEvidence(stats: DashboardStats): Evidence[] {
   }).slice(0, 4);
 }
 
-function strengthLine(stats: DashboardStats): string {
+function strengthLine(stats: AnalysisResult): string {
   if (stats.collectionState !== 'complete') {
     return '현재 공개 지표가 부족해 강점은 아직 봉인했습니다.';
   }
@@ -138,13 +106,14 @@ export default function ResultDashboard({ stats, onNewAnalysis, onShare }: Resul
     .replace(/비어 있습니다\./g, '비어\u00a0있습니다.')
     .replace(/ 신호 (?=\d)/g, '\u00a0신호\u00a0');
 
+  const insufficientBasis = '공개 지표가 부족하여 이 능력치를 산정하지 않았습니다.';
   const statRows = [
-    { name: '생명력', value: stats.hp, basis: `레벨 ${stats.level}에서 산출된 HP입니다.` },
-    { name: '일반 공격', value: stats.attack, basis: `레벨 ${stats.level}에서 산출된 공격력입니다.` },
-    { name: '방어력', value: stats.defense, basis: `레벨 ${stats.level}에서 산출된 방어력입니다.` },
-    { name: '스킬 공격', value: skillAttack, basis: `일반 공격 ${compactNumber(stats.attack)} × 1.5를 내림했습니다.` },
-    { name: '회피', value: stats.evasion, basis: `레벨 ${stats.level}에서 산출된 회피입니다.` },
-    { name: '극대화', value: critical, basis: `일반 공격 ${compactNumber(stats.attack)} × 0.3을 내림했습니다.` },
+    { name: '생명력', value: stats.hp, basis: stats.collectionState === 'complete' ? `레벨 ${stats.level}에서 산출된 HP입니다.` : insufficientBasis },
+    { name: '일반 공격', value: stats.attack, basis: stats.collectionState === 'complete' ? `레벨 ${stats.level}에서 산출된 공격력입니다.` : insufficientBasis },
+    { name: '방어력', value: stats.defense, basis: stats.collectionState === 'complete' ? `레벨 ${stats.level}에서 산출된 방어력입니다.` : insufficientBasis },
+    { name: '스킬 공격', value: skillAttack, basis: stats.collectionState === 'complete' ? `일반 공격 ${compactNumber(stats.attack)} × 1.5를 내림했습니다.` : insufficientBasis },
+    { name: '회피', value: stats.evasion, basis: stats.collectionState === 'complete' ? `레벨 ${stats.level}에서 산출된 회피입니다.` : insufficientBasis },
+    { name: '극대화', value: critical, basis: stats.collectionState === 'complete' ? `일반 공격 ${compactNumber(stats.attack)} × 0.3을 내림했습니다.` : insufficientBasis },
   ];
 
   return (

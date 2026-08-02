@@ -47,7 +47,7 @@ export const typeDefs = gql`
     githubId: String!
     fingerprint: String!
     collectionState: String!
-    commitCount: Int!
+    commitCount: Int! @deprecated(reason: "Total commits are unavailable from the collected public endpoints; use estimatedCommitCount")
     # Keep the original scalar field for existing API consumers. The
     # evidence-rich metric is exposed separately so new clients can opt in
     # without changing the shape of the public contract.
@@ -65,7 +65,7 @@ export const typeDefs = gql`
     attack: Int!
     defense: Int!
     evasion: Int!
-    items: [Item!]!
+    items: [Item!]! @deprecated(reason: "Legacy field retained for existing clients; use equipment")
     equipment: [Item!]!
     narrative: Narrative!
     aiFactBomb: String!

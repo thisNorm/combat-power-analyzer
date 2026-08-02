@@ -2,29 +2,17 @@
 
 import { useEffect, useRef } from 'react';
 
+import type { Equipment, EvidenceStatus, SourceEvidence } from '../types/analysis';
 import styles from './ResultDashboard.module.css';
 
-export interface EvidenceSource {
-  readonly sourceKey: string;
-  readonly sourceUrl: string;
-  readonly status: string;
-  readonly detail: string;
-}
-
-export interface EvidenceItem {
-  readonly name: string;
-  readonly effect: string;
-  readonly sourceKey: string;
-  readonly evidenceStatus: string;
-  readonly evidence: readonly EvidenceSource[];
-}
+export type EvidenceItem = Pick<Equipment, 'name' | 'effect' | 'sourceKey' | 'evidenceStatus' | 'evidence'>;
 
 interface EquipmentEvidenceDialogProps {
   readonly item: EvidenceItem | null;
   readonly onClose: () => void;
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: EvidenceStatus): string {
   if (status === 'observed') return '공개 근거 확인됨';
   if (status === 'unavailable') return '공개 데이터 미확인';
   if (status === 'insufficient') return '공개 데이터 부족';
@@ -69,7 +57,7 @@ export default function EquipmentEvidenceDialog({ item, onClose }: EquipmentEvid
   }, [item, onClose]);
 
   if (!item) return null;
-  const sources = item.evidence.length > 0 ? item.evidence : [{ sourceKey: item.sourceKey, sourceUrl: '', status: item.evidenceStatus, detail: '추가 공개 근거가 제공되지 않았습니다.' }];
+  const sources: readonly SourceEvidence[] = item.evidence.length > 0 ? item.evidence : [{ sourceKey: item.sourceKey, sourceUrl: '', status: item.evidenceStatus, detail: '추가 공개 근거가 제공되지 않았습니다.' }];
 
   return (
     <div className={styles.dialogBackdrop} role="presentation" onMouseDown={onClose}>
