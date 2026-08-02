@@ -18,7 +18,7 @@ const GET_COMBAT_POWER = gql`
       commitCount
       fingerprint
       collectionState
-      repoCount { key value evidence { sourceKey sourceUrl status detail } }
+      repoCount: repoMetric { key value evidence { sourceKey sourceUrl status detail } }
       followers { key value evidence { sourceKey sourceUrl status detail } }
       publicMetrics { key value evidence { sourceKey sourceUrl status detail } }
       mainLanguages

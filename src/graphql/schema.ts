@@ -48,7 +48,11 @@ export const typeDefs = gql`
     fingerprint: String!
     collectionState: String!
     commitCount: Int!
-    repoCount: PublicMetric!
+    # Keep the original scalar field for existing API consumers. The
+    # evidence-rich metric is exposed separately so new clients can opt in
+    # without changing the shape of the public contract.
+    repoCount: Int!
+    repoMetric: PublicMetric!
     followers: PublicMetric!
     publicMetrics: [PublicMetric!]!
     mainLanguages: [String!]!

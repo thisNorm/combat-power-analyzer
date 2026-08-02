@@ -91,4 +91,14 @@ export const resolvers = {
       return analyzeGithubId(normalizedGithubId, cacheKey);
     },
   },
+  DeveloperStats: {
+    // `repoCount` was historically a scalar in the public GraphQL API. Keep
+    // that contract stable while exposing the evidence-bearing metric through
+    // the new `repoMetric` field.
+    repoCount: (stats: AnalysisResult): number => {
+      const value = stats.repoCount.value;
+      return typeof value === 'number' && Number.isInteger(value) ? value : 0;
+    },
+    repoMetric: (stats: AnalysisResult) => stats.repoCount,
+  },
 };
