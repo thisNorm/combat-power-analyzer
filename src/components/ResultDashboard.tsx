@@ -135,6 +135,7 @@ export default function ResultDashboard({ stats, onNewAnalysis, onShare }: Resul
   const armor = equipment.find((item) => item.slot === 'armor');
   const subtitle = (stats.narrative.text || stats.aiFactBomb)
     .replace(/펼쳐 놓고/g, '펼쳐\u00a0놓고')
+    .replace(/비어 있습니다\./g, '비어\u00a0있습니다.')
     .replace(/ 신호 (?=\d)/g, '\u00a0신호\u00a0');
 
   const statRows = [
