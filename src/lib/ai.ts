@@ -1,44 +1,217 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import type { ResponseSchema } from '@google/generative-ai';
+import { z } from 'zod';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '키_없음');
+import { EQUIPMENT_SLOTS } from '../types/analysis';
+import type { AnalysisResult, Equipment, GithubStats, Narrative, SourceEvidence } from '../types/analysis';
 
-export async function generateFactBomb(githubData: any) {
+const NarrativeResponseSchema = z.object({ factBomb: z.string().min(1).max(280) });
+const NARRATIVE_SCHEMA: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    factBomb: { type: SchemaType.STRING },
+  },
+  required: ['factBomb'],
+};
+
+const GEMINI_VERIFICATION_TIMEOUT_MS = 4_000;
+const NARRATIVE_IDENTIFIER_SUFFIX = '님은';
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    const prompt = `
-      너는 개발자의 GitHub 데이터를 분석해 고전 RPG 게임의 캐릭터 스탯을 부여하는 게임 마스터야.
-      다음 데이터를 분석해서 반드시 JSON 형식으로만 응답해. 마크다운 기호(\`\`\`json)는 절대 쓰지 마.
-      
-      [분석할 데이터]
-      커밋 수: ${githubData.commitCount}
-      레포지토리 수: ${githubData.repoCount}
-      주력 언어: ${githubData.mainLanguages.join(', ')}
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('Gemini verification timed out.')), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
 
-      [JSON 출력 규격]
-      {
-        "class": "예: 고립된 마이크로서비스의 망령",
-        "hp": 1000에서 9999 사이,
-        "attack": 10에서 999 사이,
-        "defense": 10에서 999 사이,
-        "evasion": 10에서 99 사이,
-        "items": [
-          { "slot": "무기", "name": "주력 언어를 활용한 무기 이름", "rarity": "Legendary" },
-          { "slot": "투구", "name": "프레임워크나 툴을 활용한 방어구", "rarity": "Rare" },
-          { "slot": "장신구", "name": "재치있는 개발 관련 아이템", "rarity": "Epic" }
-        ],
-        "factBomb": "개발 습관에 대한 사이버펑크 스타일의 뼈때리는 팩폭 2문장"
-      }
-    `;
+function stableHash(value: string): string {
+  let hash = 2_166_136_261;
+  for (const character of value) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
 
-    const result = await model.generateContent(prompt);
-    const text = (await result.response.text()).replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(text); 
-  } catch (error) {
-    console.error('Gemini API 호출 실패:', error);
-    return {
-      class: "초보 모험가", hp: 100, attack: 10, defense: 10, evasion: 5,
-      items: [{ slot: "무기", name: "낡은 나무 키보드", rarity: "Normal" }],
-      factBomb: "API 키를 찾을 수 없어 기본 지급 장비만 제공합니다."
+function personaSeed(stats: GithubStats): string {
+  return JSON.stringify({
+    githubId: stats.githubId.toLowerCase(),
+    collectionState: stats.collectionState,
+    repositoryCount: stats.repoCount.value,
+    languages: stats.languageUsage.map((usage) => usage.language),
+  });
+}
+
+function hashIndex(seed: string, length: number): number {
+  return Number.parseInt(stableHash(seed), 16) % length;
+}
+
+function rarityForLevel(level: number): string {
+  if (level >= 70) return 'Legendary';
+  if (level >= 40) return 'Epic';
+  if (level >= 15) return 'Rare';
+  return 'Normal';
+}
+
+function numericValue(value: number | null): number {
+  return value ?? 0;
+}
+
+function localEquipment(stats: GithubStats, level: number): readonly Equipment[] {
+  const rarity = rarityForLevel(level);
+  const seed = personaSeed(stats);
+  const namePrefix = `${stats.githubId}-${stableHash(seed).slice(0, 6)}`;
+  const primaryLanguage = stats.languageUsage[0];
+  const sealedEvidence: SourceEvidence = stats.evidence[0] ?? stats.repoCount.evidence;
+  const observedEquipment: Partial<Record<(typeof EQUIPMENT_SLOTS)[number], Equipment>> = {};
+
+  if (primaryLanguage !== undefined) {
+    observedEquipment.weapon = {
+      slot: 'weapon',
+      name: `${namePrefix} ${primaryLanguage.language} blade`,
+      rarity,
+      effect: `Channels ${primaryLanguage.language} repository evidence.`,
+      sourceKey: primaryLanguage.evidence.sourceKey,
+      evidenceStatus: 'observed',
+      evidence: [primaryLanguage.evidence],
     };
   }
+  if (numericValue(stats.repoCount.value) > 0) {
+    observedEquipment.helm = {
+      slot: 'helm',
+      name: `${namePrefix} repository helm`,
+      rarity,
+      effect: 'Guards public repository evidence.',
+      sourceKey: stats.repoCount.evidence.sourceKey,
+      evidenceStatus: 'observed',
+      evidence: [stats.repoCount.evidence],
+    };
+  }
+  if (numericValue(stats.followers.value) > 0) {
+    observedEquipment.relic = {
+      slot: 'relic',
+      name: `${namePrefix} follower relic`,
+      rarity,
+      effect: 'Resonates with public follower evidence.',
+      sourceKey: stats.followers.evidence.sourceKey,
+      evidenceStatus: 'observed',
+      evidence: [stats.followers.evidence],
+    };
+  }
+
+  return EQUIPMENT_SLOTS.map((slot) => observedEquipment[slot] ?? {
+    slot,
+    name: `${namePrefix} sealed ${slot}`,
+    rarity: 'Sealed',
+    effect: 'Sealed pending public evidence.',
+    sourceKey: sealedEvidence.sourceKey,
+    evidenceStatus: 'sealed',
+    evidence: [sealedEvidence],
+  });
+}
+
+function localNarrative(stats: GithubStats): Narrative {
+  const hasMetrics = stats.collectionState === 'complete';
+  const repositoryCount = numericValue(stats.repoCount.value);
+  const followerCount = numericValue(stats.followers.value);
+  const primaryLanguage = stats.languageUsage[0];
+  let text: string;
+
+  if (!hasMetrics) {
+    text = `${stats.githubId}님은 공개 데이터가 부족해 오늘의 팩폭까지 봉인되었습니다.`;
+  } else if (primaryLanguage !== undefined) {
+    text = `${stats.githubId}님은 공개 저장소 ${repositoryCount}개를 펼쳐 놓고 ${primaryLanguage.language} 신호 ${primaryLanguage.repositoryCount}개로 주력 무기까지 들켰습니다.`;
+  } else if (repositoryCount > 0) {
+    text = `${stats.githubId}님은 공개 저장소 ${repositoryCount}개를 벌여 놓고도 주력 언어는 끝까지 봉인한 수상한 탐험가입니다.`;
+  } else if (followerCount > 0) {
+    text = `${stats.githubId}님은 공개 팔로워 ${followerCount}명이 지켜보는데 저장소 무기고는 아직 비어 있습니다.`;
+  } else {
+    text = `${stats.githubId}님은 공개 저장소와 팔로워가 모두 0이라 오늘의 최강 스킬이 완벽한 은신입니다.`;
+  }
+
+  return {
+    text,
+    evidenceStatus: hasMetrics ? 'observed' : 'insufficient',
+    evidence: stats.evidence,
+  };
+}
+
+async function verifyNarrativeWithGemini(fallback: Narrative): Promise<Narrative> {
+  if (fallback.evidenceStatus !== 'observed') return fallback;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (apiKey === undefined || apiKey.length === 0) return fallback;
+
+  const identifierMarker = fallback.text.indexOf(NARRATIVE_IDENTIFIER_SUFFIX);
+  const groundedSuffix = identifierMarker >= 0
+    ? fallback.text.slice(identifierMarker + NARRATIVE_IDENTIFIER_SUFFIX.length)
+    : fallback.text;
+
+  try {
+    const model = new GoogleGenerativeAI(apiKey).getGenerativeModel({
+      model: 'gemini-3.5-flash',
+      generationConfig: {
+        temperature: 0,
+        responseMimeType: 'application/json',
+        responseSchema: NARRATIVE_SCHEMA,
+      },
+    });
+    const parsed = await withTimeout(
+      model.generateContent([
+        'Return the exact evidence-bound Korean narrative suffix below unchanged as the factBomb JSON field. The developer identifier is intentionally omitted and must not be inferred or added. Do not add, remove, translate, or rewrite any character.',
+        groundedSuffix,
+      ].join('\n')).then(async (response) => {
+        const raw: unknown = JSON.parse(await response.response.text());
+        return NarrativeResponseSchema.safeParse(raw);
+      }),
+      GEMINI_VERIFICATION_TIMEOUT_MS,
+    );
+    return parsed.success && parsed.data.factBomb === groundedSuffix
+      ? {
+          ...fallback,
+          text: identifierMarker >= 0
+            ? `${fallback.text.slice(0, identifierMarker)}${NARRATIVE_IDENTIFIER_SUFFIX}${parsed.data.factBomb}`
+            : parsed.data.factBomb,
+        }
+      : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function generateFactBomb(stats: GithubStats): Promise<AnalysisResult> {
+  const hasObservedProfile = stats.collectionState === 'complete';
+  const repoCount = numericValue(stats.repoCount.value);
+  const followers = numericValue(stats.followers.value);
+  const level = hasObservedProfile
+    ? Math.min(99, 1 + Math.floor(repoCount / 2) + Math.floor(followers / 10) + stats.languageUsage.length)
+    : 1;
+  const equipment = localEquipment(stats, level);
+  const fallbackNarrative = localNarrative(stats);
+  const narrative = await verifyNarrativeWithGemini(fallbackNarrative);
+  const classes = ['Sourcebound Scout', 'Repository Warden', 'Evidence Cartographer'] as const;
+  const seed = personaSeed(stats);
+
+  return {
+    ...stats,
+    // The legacy non-null GraphQL field uses zero only as a compatibility
+    // sentinel. Evidence-aware clients consume estimatedCommitCount instead.
+    commitCount: stats.estimatedCommitCount.value ?? 0,
+    mainLanguages: stats.languageUsage.map((usage) => usage.language),
+    level,
+    jobClass: classes[hashIndex(seed, classes.length)] ?? classes[0],
+    hp: hasObservedProfile ? 100 + level * 50 : 0,
+    attack: hasObservedProfile ? 10 + level * 7 : 0,
+    defense: hasObservedProfile ? 8 + level * 5 : 0,
+    evasion: hasObservedProfile ? 3 + Math.floor(level / 2) : 0,
+    items: equipment,
+    equipment,
+    narrative,
+    aiFactBomb: narrative.text,
+  };
 }

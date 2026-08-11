@@ -1,32 +1,54 @@
 'use client';
-import { useState } from 'react';
+
+import { FormEvent, useState } from 'react';
 
 export default function LandingForm({ onSubmit }: { onSubmit: (id: string) => void }) {
-    const [githubId, setGithubId] = useState('');
+  const [githubId, setGithubId] = useState('');
 
-    return (
-        <div className="flex flex-col items-center justify-center h-[80vh] text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-green-400 mb-4 tracking-tighter">
-                당신의 개발 전투력은 몇 만입니까?
-            </h1>
-            <p className="text-gray-400 mb-8">AI가 깃허브 코드를 씹고 뜯고 분석해 드립니다.</p>
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSubmit(githubId);
+  };
 
-            <div className="flex w-full max-w-md space-x-2">
-                <input
-                    type="text"
-                    placeholder="GitHub 아이디를 입력하세요"
-                    className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-while focus: outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400"
-                    value={githubId}
-                    onChange={(e) => setGithubId(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && onSubmit(githubId)}
-                />
-                <button
-                    onClick={() => onSubmit(githubId)}
-                    className="bg-green-500 hover:bg-green-400 text-gray-900 font-bold px-6 py-3 rounded-lg transition-colors"
-        >
-          측정 시작
-        </button>
+  return (
+    <section className="landing-screen" aria-labelledby="landing-title">
+      <div className="landing-shell pixel-panel">
+        <p className="pixel-kicker">Code Hunter</p>
+        <h1 className="landing-title" id="landing-title">
+          당신의 개발 전투력은 몇 만입니까?
+        </h1>
+        <p className="landing-description">
+          GitHub 공개 활동을 장비와 스탯으로 바꿔, 당신의 개발 직업을 찾아드립니다.
+        </p>
+
+        <form className="landing-form" onSubmit={handleSubmit}>
+          <label className="landing-label" htmlFor="github-id">
+            GitHub 사용자명 또는 프로필 주소
+          </label>
+          <div className="landing-controls">
+            <input
+              className="pixel-input"
+              id="github-id"
+              type="text"
+              inputMode="url"
+              autoComplete="username"
+              placeholder="예: octocat 또는 github.com/octocat"
+              aria-describedby="github-id-help"
+              value={githubId}
+              onChange={(event) => setGithubId(event.target.value)}
+            />
+            <button className="pixel-button" type="submit">
+              전투력 측정하기
+            </button>
+          </div>
+          <p className="landing-help" id="github-id-help">
+            공개로 확인할 수 있는 GitHub 활동만 분석합니다.
+          </p>
+          <p className="landing-help">
+            설정된 경우 공개 GitHub 지표의 근거 문장이 Google Gemini로 검증될 수 있습니다. 사용자명 자체는 전송하지 않습니다.
+          </p>
+        </form>
       </div>
-    </div>
+    </section>
   );
 }
