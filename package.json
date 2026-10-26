@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apollo/client": "^4.3.3",
+    "@apollo/client": "^4.3.5",
     "@apollo/server": "^5.5.1",
     "@as-integrations/next": "^4.1.0",
     "@google/generative-ai": "^0.24.1",
