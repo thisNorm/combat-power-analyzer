@@ -11,15 +11,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@apollo/client": "^4.3.5",
+    "@apollo/client": "^4.3.7",
     "@apollo/server": "^5.5.1",
     "@as-integrations/next": "^4.1.0",
     "@google/generative-ai": "^0.24.1",
-    "graphql": "^17.0.2",
+    "graphql": "^17.1.0",
     "graphql-tag": "^2.12.7",
     "html2canvas": "^1.4.1",
     "ioredis": "^6.0.0",
-    "next": "16.4.3",
+    "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "^4.6.7"
@@ -30,9 +30,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^10",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",
     "typescript": "^7",
-    "vitest": "^5.0.5"
+    "vitest": "^5.1.0"
   }
 }
